@@ -1,0 +1,14 @@
+# Exceptions
+!/.gitignore
+
+# ignore compiled version
+Binaries/
+
+# Engine intermediates
+Intermediate/
+
+# Ignore any saved local files
+Saved/
+
+# Ignore various private folders
+_*/
