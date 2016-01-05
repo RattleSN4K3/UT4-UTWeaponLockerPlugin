@@ -1,0 +1,24 @@
+{
+	"FileVersion" : 3,
+	
+	"FriendlyName" : "UTWeaponLocker Plugin",
+	"Version" : 1,
+	"VersionName" : "1.0",
+	"CreatedBy" : "RattleSN4K3",
+	"CreatedByURL" : "",
+	"EngineVersion" : "",
+	"Description" : "",
+	"Category" : "UnrealTournament.Mod",
+	"EnabledByDefault" : true,
+	"CanContainContent" : true,
+	
+	"Modules" :
+	[
+		{
+			"Name" : "UTWeaponLockerPlugin",
+			"Type" : "Runtime",
+			"WhitelistPlatforms" : [ "Win32", "Win64", "Linux" ]
+		}
+	]
+}
+
