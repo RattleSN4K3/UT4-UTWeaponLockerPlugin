@@ -62,25 +62,25 @@ class AUTWeaponLocker : public AUTPickup
 	virtual void OnRep_ReplacementWeapons();
 
 	/** offsets from locker location where we can place weapon meshes */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = PickupDisplay, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	TArray<FVector> LockerPositions;
 
 	/** how high the weapons floats (additional Z axis translation applied to pickup mesh) */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = PickupDisplay, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	float LockerFloatHeight;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = PickupDisplay, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	FVector WeaponLockerOffset;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = PickupDisplay, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	FRotator WeaponLockerRotation;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = PickupDisplay, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	FVector WeaponLockerScale3D;
 
 	/** component for the active/inactive effect, depending on state */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Pickup)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Locker)
 	UParticleSystemComponent* AmbientEffect;
 	/** effect that's visible when active and the player gets nearby */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Pickup)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Locker)
 	UParticleSystemComponent* ProximityEffect;
 	/** effect for when the weapon locker cannot be used by the player right now */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Effects)
@@ -93,7 +93,7 @@ class AUTWeaponLocker : public AUTPickup
 	UParticleSystem* WeaponSpawnEffectTemplate;
 
 	/** Locker message to display on player HUD. */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Pickup)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Locker)
 	FText LockerString;
 
 	/** returns name of item for HUD displays, etc */
@@ -117,78 +117,78 @@ class AUTWeaponLocker : public AUTPickup
 	float BotDesireabilityGlobal(APawn* Asker, float PathDistance);
 
 	/** initialize properties/display for the weapons that are listed in the array */
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Locker)
 	void InitializeWeapons();
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Locker)
 	void DestroyWeapons();
 
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
 
 	UPROPERTY()
 	float MaxDesireability;
 
 	/** clientside flag - whether the locker should be displayed as active and having weapons available */
-	UPROPERTY(BlueprintReadWrite, Category = Pickup, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	uint32 bIsActive : 1;
 
 	/** clientside flag - whether or not a local player is near this locker */
-	UPROPERTY(BlueprintReadWrite, Category = Pickup, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	uint32 bPlayerNearby : 1;
 
 	/** whether weapons are currently scaling up */
-	UPROPERTY(BlueprintReadWrite, Category = Pickup, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	uint32 bScalingUp : 1;
 
 	/** current scaling up weapon scale */
-	UPROPERTY(BlueprintReadWrite, Category = Pickup, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	float CurrentWeaponScaleX;
 
 	/** how close a player needs to be to be considered nearby */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickupDisplay)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locker|Display")
 	float ProximityDistanceSquared;
 
 	/** Next proximity check time */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = PickupDisplay)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locker|Display")
 	float NextProximityCheckTime;
 
 	/** list of characters that have picked up weapons from this locker recently */
-	UPROPERTY(BlueprintReadOnly, Category = PickupWeaponLocker, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadOnly, Category = Locker, meta = (AllowPrivateAccess = "true"))
 	TArray<FWeaponPickupCustomer> Customers;
 
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual bool AddCustomer(APawn* P);
-	UFUNCTION(BlueprintPure, Category = Pickup)
+	UFUNCTION(BlueprintPure, Category = Locker)
 	virtual bool HasCustomer(APawn* P);
 
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects);
 
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ShowActive(); // TODO: Add BlueprintNativeEvent
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ShowHidden(); // TODO: Add BlueprintNativeEvent
 
 	/** replaces an entry in the Weapons array (generally used by mutators) */
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeaponClass);
 
 	/** In disabled state */
-	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsDisabled, Category = Pickup)
+	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsDisabled, Category = Locker)
 	uint32 bIsDisabled : 1;
 
 	UFUNCTION()
 	virtual void OnRep_IsDisabled();
 
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void DisablePickup()
 	{
 		bIsDisabled = true;
 		GotoState(DisabledState);
 	}
 
-	UFUNCTION(BlueprintCallable, Category = Pickup)
+	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void EnablePickup()
 	{
 		bIsDisabled = false;
@@ -226,7 +226,6 @@ class AUTWeaponLocker : public AUTPickup
 
 protected:
 
-	UPROPERTY(BlueprintReadOnly, Category = "Pickup")
 	UUTWeaponLockerState* CurrentState;
 
 	UUTWeaponLockerState* InitialState;
