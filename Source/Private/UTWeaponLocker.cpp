@@ -344,7 +344,16 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 				if (Weapons[i].PickupMesh != NULL)
 				{
 					Weapons[i].PickupMesh->SetHiddenInGame(false);
+
+					if (bPlayEffects)
+					{
+						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, Weapons[i].PickupMesh->GetComponentLocation());
+					}
 				}
+			}
+			if (ProximityEffect)
+			{
+				ProximityEffect->SetActive(true);
 			}
 			GetWorld()->GetTimerManager().ClearTimer(DestroyWeaponsHandle);
 		}
@@ -356,7 +365,15 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 				if (Weapons[i].PickupMesh != NULL)
 				{
 					Weapons[i].PickupMesh->SetHiddenInGame(true);
+					if (bPlayEffects)
+					{
+						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, Weapons[i].PickupMesh->GetComponentLocation());
+					}
 				}
+			}
+			if (ProximityEffect)
+			{
+				ProximityEffect->DeactivateSystem();
 			}
 			GetWorldTimerManager().SetTimer(DestroyWeaponsHandle, this, &AUTWeaponLocker::DestroyWeapons, 5.f, false);
 		}
@@ -445,15 +462,21 @@ void AUTWeaponLocker::ShowActive()
 void UUTWeaponLockerStatePickup::ShowActive()
 {
 	GetOuterAUTWeaponLocker()->bIsActive = true;
-	//GetOuterAUTWeaponLocker()->AmbientEffect.SetTemplate(ActiveEffectTemplate);
 	GetOuterAUTWeaponLocker()->NextProximityCheckTime = 0.f;
+	if (GetOuterAUTWeaponLocker()->AmbientEffect)
+	{
+		GetOuterAUTWeaponLocker()->AmbientEffect->SetTemplate(GetOuterAUTWeaponLocker()->ActiveEffectTemplate);
+	}
 }
 
 void AUTWeaponLocker::ShowHidden()
 {
 	bIsActive = false;
-	//AmbientEffect.SetTemplate(InactiveEffectTemplate);
 	SetPlayerNearby(nullptr, false, false);
+	if (AmbientEffect)
+	{
+		AmbientEffect->SetTemplate(InactiveEffectTemplate);
+	}
 }
 
 void AUTWeaponLocker::SetInitialState()

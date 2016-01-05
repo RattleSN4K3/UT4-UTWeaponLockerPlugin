@@ -76,6 +76,22 @@ class AUTWeaponLocker : public AUTPickup
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = PickupDisplay, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	FVector WeaponLockerScale3D;
 
+	/** component for the active/inactive effect, depending on state */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Pickup)
+	UParticleSystemComponent* AmbientEffect;
+	/** effect that's visible when active and the player gets nearby */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Pickup)
+	UParticleSystemComponent* ProximityEffect;
+	/** effect for when the weapon locker cannot be used by the player right now */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Effects)
+	UParticleSystem* InactiveEffectTemplate;
+	/** effect for when the weapon locker is usable by the player right now */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Effects)
+	UParticleSystem* ActiveEffectTemplate;
+	/** effect played over weapons being scaled in when the player is nearby */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Effects)
+	UParticleSystem* WeaponSpawnEffectTemplate;
+
 	/** Locker message to display on player HUD. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Pickup)
 	FText LockerString;
