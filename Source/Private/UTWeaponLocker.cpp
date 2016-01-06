@@ -6,6 +6,8 @@
 #include "MessageLog.h"
 #include "UObjectToken.h"
 
+#include "UTWorldSettings.h"
+
 #define LOCTEXT_NAMESPACE "UTWeaponLocker"
 
 AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
@@ -359,6 +361,8 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 		}
 		else
 		{
+			AUTWorldSettings* WS = Cast<AUTWorldSettings>(GetWorld()->GetWorldSettings());
+			bPlayEffects = bPlayEffects && (WS == NULL || WS->EffectIsRelevant(this, GetActorLocation(), true, true, 0.f, 0.f));
 			bScalingUp = false;
 			for (int32 i = 0; i < Weapons.Num(); i++)
 			{
