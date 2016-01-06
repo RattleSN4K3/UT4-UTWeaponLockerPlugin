@@ -62,6 +62,7 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	WeaponLockerScale3D = FVector(0.75, 0.65f, 0.75f);
 
 	ProximityDistanceSquared = 600000.0f;
+	ScaleRate = 2.f;
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
 	DisabledState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateDisabled>(this, TEXT("StateDisabled"));
@@ -340,6 +341,16 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 						if (!WeaponLockerScale3D.IsZero())
 						{
 							Weapons[i].PickupMesh->SetRelativeScale3D(Weapons[i].PickupMesh->RelativeScale3D * WeaponLockerScale3D);
+						}
+
+						FVector NewScale = Weapons[i].PickupMesh->GetComponentScale();
+						if (ScaleRate > 0.f)
+						{
+							Weapons[i].DesiredScale3D = NewScale;
+							NewScale.X *= 0.1;
+							NewScale.Z *= 0.1;
+
+							Weapons[i].PickupMesh->SetWorldScale3D(NewScale);
 						}
 					}
 				}
@@ -762,6 +773,26 @@ void UUTWeaponLockerStatePickup::Tick(float DeltaTime)
 			if (bNewPlayerNearby != WL->bPlayerNearby)
 			{
 				WL->SetPlayerNearby(NearbyPC, bNewPlayerNearby, true);
+			}
+		}
+
+		if (WL->bScalingUp && WL->ScaleRate > 0.f)
+		{
+			WL->CurrentWeaponScaleX += DeltaTime * WL->ScaleRate;;
+			if (WL->CurrentWeaponScaleX >= 1.f)
+			{
+				WL->CurrentWeaponScaleX = 1.f;
+				WL->bScalingUp = false;
+			}
+
+			for (int32 i = 0; i < WL->Weapons.Num(); i++)
+			{
+				if (WL->Weapons[i].PickupMesh != NULL)
+				{
+					FVector NewScale = WL->Weapons[i].DesiredScale3D * WL->CurrentWeaponScaleX;
+					NewScale.Y = WL->Weapons[i].DesiredScale3D.Y;
+					WL->Weapons[i].PickupMesh->SetWorldScale3D(NewScale);
+				}
 			}
 		}
 	}

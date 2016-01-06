@@ -13,6 +13,9 @@ struct FWeaponEntry
 	UPROPERTY(BlueprintReadonly, Category = Pickup)
 	UMeshComponent* PickupMesh;
 
+	UPROPERTY(BlueprintReadonly, Category = Pickup)
+	FVector DesiredScale3D;
+
 	FWeaponEntry()
 	{}
 	FWeaponEntry(TSubclassOf<AUTWeapon> InWeaponClass)
@@ -144,6 +147,10 @@ class AUTWeaponLocker : public AUTPickup
 	/** current scaling up weapon scale */
 	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	float CurrentWeaponScaleX;
+
+	/** the rate to scale the weapons's Scale3D.X when spawning them in (set to 0.0 to disable the scaling) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locker|Display")
+	float ScaleRate;
 
 	/** how close a player needs to be to be considered nearby */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locker|Display")
