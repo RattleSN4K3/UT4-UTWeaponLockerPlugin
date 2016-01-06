@@ -373,7 +373,7 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 		else
 		{
 			AUTWorldSettings* WS = Cast<AUTWorldSettings>(GetWorld()->GetWorldSettings());
-			bPlayEffects = bPlayEffects && (WS == NULL || WS->EffectIsRelevant(this, GetActorLocation(), true, true, 0.f, 0.f));
+			bPlayEffects = bPlayEffects && (WS == NULL || WS->EffectIsRelevant(this, GetActorLocation(), true, true, 10000.f, 0.f));
 			bScalingUp = false;
 			for (int32 i = 0; i < Weapons.Num(); i++)
 			{
