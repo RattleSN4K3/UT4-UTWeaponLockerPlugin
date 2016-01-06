@@ -157,7 +157,7 @@ class AUTWeaponLocker : public AUTPickup
 	float ProximityDistanceSquared;
 
 	/** Next proximity check time */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locker|Display")
+	UPROPERTY(BlueprintReadWrite, Category = "Locker|Display")
 	float NextProximityCheckTime;
 
 	/** list of characters that have picked up weapons from this locker recently */
