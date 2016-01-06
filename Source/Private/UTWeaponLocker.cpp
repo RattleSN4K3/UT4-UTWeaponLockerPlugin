@@ -7,6 +7,7 @@
 #include "UObjectToken.h"
 
 #include "UTWorldSettings.h"
+#include "UTPickupMessage.h"
 
 #define LOCTEXT_NAMESPACE "UTWeaponLocker"
 
@@ -214,6 +215,14 @@ void AUTWeaponLocker::GiveTo_Implementation(APawn* Target)
 	GiveLockerWeapons(Target, true);
 }
 
+void AUTWeaponLocker::AnnouncePickup(AUTCharacter* P, TSubclassOf<AUTInventory> NewInventoryType, AUTInventory* NewInventory/* = nullptr*/)
+{
+	if (auto PC = Cast<APlayerController>(P->GetController()))
+	{
+		PC->ClientReceiveLocalizedMessage(UUTPickupMessage::StaticClass(), 0, P->PlayerState, NULL, NewInventoryType);
+	}
+}
+
 void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
 {
 	if (CurrentState)
@@ -310,7 +319,16 @@ void UUTWeaponLockerStatePickup::GiveLockerWeapons(AActor* Other, bool bHideWeap
 			if (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, GetOuterAUTWeaponLocker(), bAllowPickup))
 			{
 				Copy = Recipient->CreateInventory<AUTWeapon>(LocalInventoryType, true);
+				if (Copy)
+				{
+					GetOuterAUTWeaponLocker()->AnnouncePickup(Recipient, LocalInventoryType);
+				}
 			}
+		}
+
+		if (Copy && Copy->PickupSound)
+		{
+			UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, GetOuterAUTWeaponLocker(), SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
 		}
 	}
 }

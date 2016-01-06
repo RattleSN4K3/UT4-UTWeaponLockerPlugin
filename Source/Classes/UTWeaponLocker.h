@@ -129,6 +129,10 @@ class AUTWeaponLocker : public AUTPickup
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
 
+	/** Announce pickup to recipient */
+	UFUNCTION(BlueprintCallable, Category = Pickup)
+	virtual void AnnouncePickup(AUTCharacter* P, TSubclassOf<AUTInventory> NewInventoryType, AUTInventory* NewInventory = nullptr);
+
 	UPROPERTY()
 	float MaxDesireability;
 
