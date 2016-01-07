@@ -2,6 +2,28 @@
 
 #include "UTWeaponLocker.generated.h"
 
+class UUTWeaponLockerState;
+
+USTRUCT(BlueprintType)
+struct FStateMap
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(Instanced, NoClear, EditDefaultsOnly, BlueprintReadOnly, Category = State)
+	class UUTWeaponLockerState* StateClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State)
+	FName StateName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State)
+	uint32 bAuto : 1;
+
+	FStateMap()
+		: StateName(FName(TEXT("")))
+		, bAuto(0)
+	{}
+};
+
 USTRUCT(BlueprintType)
 struct FWeaponEntry
 {
@@ -105,8 +127,13 @@ class AUTWeaponLocker : public AUTPickup
 		return LockerString;
 	}
 
+	//Begin AActor Interface
 	virtual void BeginPlay() override;
+	virtual void PreInitializeComponents() override;
 	virtual void Tick(float DeltaTime) override;
+	//End AActor Interface
+
+	//Begin AUTPickup Interface
 	virtual void Reset_Implementation() override;
 	virtual bool AllowPickupBy_Implementation(APawn* Other, bool bDefaultAllowPickup) override;
 	virtual void ProcessTouch_Implementation(APawn* TouchedBy) override;
@@ -115,6 +142,7 @@ class AUTWeaponLocker : public AUTPickup
 
 	virtual float BotDesireability_Implementation(APawn* Asker, float TotalDistance) override;
 	virtual float DetourWeight_Implementation(APawn* Asker, float PathDistance) override;
+	//End AUTPickup Interface
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = AI, meta = (BlueprintProtected))
 	float BotDesireabilityGlobal(APawn* Asker, float PathDistance);
@@ -128,6 +156,9 @@ class AUTWeaponLocker : public AUTPickup
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
+
+	UFUNCTION(BlueprintCallable, Category = Locker, meta = (BlueprintProtected))
+	virtual void GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons);
 
 	/** Announce pickup to recipient */
 	UFUNCTION(BlueprintCallable, Category = Pickup)
@@ -212,11 +243,8 @@ class AUTWeaponLocker : public AUTPickup
 	UFUNCTION()
 	virtual void OnPawnDied(AController* Killer, const UDamageType* DamageType);
 
-	UFUNCTION(BlueprintPure, Category = Pickup, meta = (DisplayName = "GetCurrentState"))
-	UUTWeaponLockerState* Blueprint_GetCurrentState()
-	{
-		return GetCurrentState();
-	}
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State)
+	TArray<FStateMap> States;
 
 	inline UUTWeaponLockerState* GetCurrentState()
 	{
@@ -228,6 +256,20 @@ class AUTWeaponLocker : public AUTPickup
 
 	UFUNCTION(BlueprintCallable, Category = Pickup)
 	virtual void GotoState(class UUTWeaponLockerState* NewState);
+
+	UFUNCTION(BlueprintCallable, Category = Pickup)
+	virtual void GotoStateByName(FName NewStateName)
+	{
+		if (NewStateName.IsNone())
+		{
+			GotoState(GlobalState);
+		}
+		else if (FStateMap* NewState = States.FindByPredicate([&](const FStateMap& StateMap){ return StateMap.StateName == NewStateName; }))
+		{
+			GotoState(NewState->StateClass);
+		}
+	}
+
 	/** notification of state change (CurrentState is new state)
 	* if a state change triggers another state change (i.e. within BeginState()/EndState())
 	* this function will only be called once, when CurrentState is the final state
@@ -237,18 +279,19 @@ class AUTWeaponLocker : public AUTPickup
 
 protected:
 
+	UPROPERTY(BlueprintReadOnly, Category = "State")
 	UUTWeaponLockerState* CurrentState;
 
 	UUTWeaponLockerState* InitialState;
 	UUTWeaponLockerState* AutoState;
 
-	UPROPERTY(Instanced, BlueprintReadOnly, Category = "States")
+	UPROPERTY(Instanced, NoClear, EditDefaultsOnly, BlueprintReadOnly, Category = "State")
 	UUTWeaponLockerState* GlobalState;
 
-	UPROPERTY(Instanced, BlueprintReadOnly, Category = "States")
+	UPROPERTY(BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* DisabledState;
 
-	UPROPERTY(Instanced, BlueprintReadOnly, Category = "States")
+	UPROPERTY(BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* PickupState;
 
 	UFUNCTION(BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
@@ -260,12 +303,15 @@ protected:
 #if WITH_EDITOR
 public:
 	virtual void CheckForErrors() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
+	virtual bool HasStateErrors(TArray<FString>& StateErrors);
 protected:
 #endif // WITH_EDITOR
 
 };
 
-UCLASS(DefaultToInstanced, EditInlineNew, CustomConstructor, Within = UTWeaponLocker)
+UCLASS(Blueprintable, DefaultToInstanced, EditInlineNew, CustomConstructor, Within = UTWeaponLocker)
 class UUTWeaponLockerState : public UObject
 {
 	GENERATED_UCLASS_BODY()
@@ -274,39 +320,63 @@ class UUTWeaponLockerState : public UObject
 	: Super(ObjectInitializer)
 	{}
 
+	UFUNCTION(BlueprintPure, Category = Locker, meta = (DisplayName = "Get Outer UTWeaponLocker"))
+	AUTWeaponLocker* Blueprint_GetOuterAUTWeaponLocker() const
+	{
+		return GetOuterAUTWeaponLocker();
+	}
+
 	virtual UWorld* GetWorld() const override
 	{
 		return GetOuterAUTWeaponLocker()->GetWorld();
 	}
 
-	virtual void SetInitialState()
-	{}
-	virtual void BeginState(const UUTWeaponLockerState* PrevState)
-	{}
-	virtual void EndState()
-	{}
-	virtual void Tick(float DeltaTime)
-	{}
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	void SetInitialState();
 
-	virtual bool OverrideProcessTouch(APawn* TouchedBy)
-	{
-		return false;
-	}
+	UFUNCTION(BlueprintNativeEvent)
+	void BeginState(const UUTWeaponLockerState* PrevState);
 
-	virtual void ShowActive()
-	{}
+	UFUNCTION(BlueprintNativeEvent)
+	void EndState(const UUTWeaponLockerState* NextState);
 
-	virtual void GiveLockerWeapons(AActor* Other, bool bHideWeapons)
-	{}
+	UFUNCTION(BlueprintNativeEvent)
+	void Tick(float DeltaTime);
 
-	virtual float BotDesireability(APawn* Asker, float TotalDistance)
-	{
-		return GetOuterAUTWeaponLocker()->BotDesireabilityGlobal(Asker, TotalDistance);
-	}
+	UFUNCTION(BlueprintNativeEvent)
+	bool OverrideProcessTouch(APawn* TouchedBy);
 
-	virtual void NotifyLocalPlayerDead(APlayerController* PC)
-	{}
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	void ShowActive();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	float BotDesireability(APawn* Asker, float TotalDistance);
+
+	UFUNCTION(BlueprintNativeEvent)
+	void NotifyLocalPlayerDead(APlayerController* PC);
 };
+
+inline void UUTWeaponLockerState::SetInitialState_Implementation()
+{
+	GetOuterAUTWeaponLocker()->SetInitialStateGlobal();
+}
+inline void UUTWeaponLockerState::BeginState_Implementation(const UUTWeaponLockerState* PrevState){ return; }
+inline void UUTWeaponLockerState::EndState_Implementation(const UUTWeaponLockerState* NextState){ return; }
+inline void UUTWeaponLockerState::Tick_Implementation(float DeltaTime){ return; }
+inline bool UUTWeaponLockerState::OverrideProcessTouch_Implementation(APawn* TouchedBy)
+{
+	return false;
+}
+inline void UUTWeaponLockerState::ShowActive_Implementation(){ return; }
+inline void UUTWeaponLockerState::GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons){ return; }
+inline float UUTWeaponLockerState::BotDesireability_Implementation(APawn* Asker, float TotalDistance)
+{
+	return GetOuterAUTWeaponLocker()->BotDesireabilityGlobal(Asker, TotalDistance);
+}
+inline void UUTWeaponLockerState::NotifyLocalPlayerDead_Implementation(APlayerController* PC){ return; }
 
 UCLASS(CustomConstructor)
 class UUTWeaponLockerStateDisabled : public UUTWeaponLockerState
@@ -317,9 +387,10 @@ class UUTWeaponLockerStateDisabled : public UUTWeaponLockerState
 	: Super(ObjectInitializer)
 	{}
 
-	virtual void BeginState(const UUTWeaponLockerState* PrevState) override;
-	virtual bool OverrideProcessTouch(APawn* TouchedBy) override;
-	virtual float BotDesireability(APawn* Asker, float TotalDistance) override;
+	virtual void SetInitialState_Implementation() override;
+	virtual void BeginState_Implementation(const UUTWeaponLockerState* PrevState) override;
+	virtual bool OverrideProcessTouch_Implementation(APawn* TouchedBy) override;
+	virtual float BotDesireability_Implementation(APawn* Asker, float TotalDistance) override;
 };
 
 UCLASS(CustomConstructor)
@@ -331,12 +402,12 @@ class UUTWeaponLockerStatePickup : public UUTWeaponLockerState
 	: Super(ObjectInitializer)
 	{}
 
-	virtual void BeginState(const UUTWeaponLockerState* PrevState) override;
-	virtual bool OverrideProcessTouch(APawn* TouchedBy) override;
-	virtual void Tick(float DeltaTime) override;
+	virtual void BeginState_Implementation(const UUTWeaponLockerState* PrevState) override;
+	virtual bool OverrideProcessTouch_Implementation(APawn* TouchedBy) override;
+	virtual void Tick_Implementation(float DeltaTime) override;
 
-	virtual void GiveLockerWeapons(AActor* Other, bool bHideWeapons) override;
-	virtual void ShowActive() override;
+	virtual void GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons) override;
+	virtual void ShowActive_Implementation() override;
 
-	virtual void NotifyLocalPlayerDead(APlayerController* PC) override;
+	virtual void NotifyLocalPlayerDead_Implementation(APlayerController* PC) override;
 };

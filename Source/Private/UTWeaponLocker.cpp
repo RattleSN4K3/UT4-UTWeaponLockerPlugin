@@ -66,9 +66,17 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	ScaleRate = 2.f;
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
-	DisabledState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateDisabled>(this, TEXT("StateDisabled"));
-	PickupState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStatePickup>(this, TEXT("StatePickup"));
-	AutoState = PickupState;
+
+	States.AddDefaulted();
+	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateDisabled>(this, TEXT("StateDisabled"));
+	States.Last().StateName = FName(TEXT("Disabled"));
+	DisabledState = States.Last().StateClass;
+	
+	States.AddDefaulted();
+	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStatePickup>(this, TEXT("StatePickup"));
+	States.Last().StateName = FName(TEXT("Pickup"));
+	States.Last().bAuto = true;
+	PickupState = States.Last().StateClass;
 
 	// Structure to hold one-time initialization
 	struct FConstructorStaticsWarn
@@ -89,6 +97,19 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	WarnIfInLocker.AddUnique(ConstructorStaticsWarn.Sniper.Object);
 	//WarnIfInLocker.AddUnique(ConstructorStaticsWarn.Avril.Object);
 	WarnIfInLocker.Remove(NULL);
+}
+
+void AUTWeaponLocker::PreInitializeComponents()
+{
+	Super::PreInitializeComponents();
+
+	for (auto State : States)
+	{
+		if (State.bAuto)
+		{
+			AutoState = State.StateClass;
+		}
+	}
 }
 
 void AUTWeaponLocker::BeginPlay()
@@ -231,6 +252,60 @@ void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
 	}
 }
 
+void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons)
+{
+	AUTCharacter* Recipient = Cast<AUTCharacter>(Other);
+	if (Recipient == NULL)
+		return;
+
+	APawn* DriverPawn = Recipient->DrivenVehicle ? Recipient->DrivenVehicle : Recipient;
+	if (DriverPawn && DriverPawn->IsLocallyControlled())
+	{
+		if (bHideWeapons && bIsActive)
+		{
+			// register local player by bind to the Died event in order
+			// to track when the local player dies... to reset the locker
+			RegisterLocalPlayer(DriverPawn->GetController());
+
+			ShowHidden();
+			GetWorldTimerManager().SetTimer(HideWeaponsHandle, this, &AUTWeaponLocker::ShowActive, 30.f, false);
+		}
+	}
+
+	if (Role < ROLE_Authority)
+		return;
+	if (bHideWeapons && !AddCustomer(Recipient))
+		return;
+
+	AUTGameMode* UTGameMode = GetWorld()->GetAuthGameMode<AUTGameMode>();
+	for (int32 i = 0; i < Weapons.Num(); i++)
+	{
+		TSubclassOf<AUTWeapon> LocalInventoryType = Weapons[i].WeaponClass;
+		AUTWeapon* Copy = Recipient->FindInventoryType<AUTWeapon>(LocalInventoryType, true);
+		if (Copy != NULL)
+		{
+			Copy->StackPickup(NULL);
+		}
+		else
+		{
+			bool bAllowPickup = true;
+			if (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, this, bAllowPickup))
+			{
+				Copy = Recipient->CreateInventory<AUTWeapon>(LocalInventoryType, true);
+				if (Copy)
+				{
+					AnnouncePickup(Recipient, LocalInventoryType);
+				}
+			}
+		}
+
+		if (Copy && Copy->PickupSound)
+		{
+			UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
+		}
+	}
+}
+
 void AUTWeaponLocker::RegisterLocalPlayer(AController* C)
 {
 	if (C == NULL)
@@ -273,64 +348,15 @@ void AUTWeaponLocker::OnPawnDied(AController* Killer, const UDamageType* DamageT
 	}
 }
 
-void UUTWeaponLockerStatePickup::NotifyLocalPlayerDead(APlayerController* PC)
+void UUTWeaponLockerStatePickup::NotifyLocalPlayerDead_Implementation(APlayerController* PC)
 {
 	GetOuterAUTWeaponLocker()->ShowActive();
 }
 
 // Note: This is only in LockerPickup state
-void UUTWeaponLockerStatePickup::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
+void UUTWeaponLockerStatePickup::GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons)
 {
-	AUTCharacter* Recipient = Cast<AUTCharacter>(Other);
-	if (Recipient == NULL)
-		return;
-
-	APawn* DriverPawn = Recipient->DrivenVehicle ? Recipient->DrivenVehicle : Recipient;
-	if (DriverPawn && DriverPawn->IsLocallyControlled())
-	{
-		if (bHideWeapons && GetOuterAUTWeaponLocker()->bIsActive)
-		{
-			// register local player by bind to the Died event in order
-			// to track when the local player dies... to reset the locker
-			GetOuterAUTWeaponLocker()->RegisterLocalPlayer(DriverPawn->GetController());
-
-			GetOuterAUTWeaponLocker()->ShowHidden();
-			GetOuterAUTWeaponLocker()->GetWorldTimerManager().SetTimer(GetOuterAUTWeaponLocker()->HideWeaponsHandle, GetOuterAUTWeaponLocker(), &AUTWeaponLocker::ShowActive, 30.f, false);
-		}
-	}
-
-	if (GetOuterAUTWeaponLocker()->Role < ROLE_Authority)
-		return;
-	if (bHideWeapons && !GetOuterAUTWeaponLocker()->AddCustomer(Recipient))
-		return;
-
-	AUTGameMode* UTGameMode = GetWorld()->GetAuthGameMode<AUTGameMode>();
-	for (int32 i = 0; i < GetOuterAUTWeaponLocker()->Weapons.Num(); i++)
-	{
-		TSubclassOf<AUTWeapon> LocalInventoryType = GetOuterAUTWeaponLocker()->Weapons[i].WeaponClass;
-		AUTWeapon* Copy = Recipient->FindInventoryType<AUTWeapon>(LocalInventoryType, true);
-		if (Copy != NULL)
-		{
-			Copy->StackPickup(NULL);
-		}
-		else
-		{
-			bool bAllowPickup = true;
-			if (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, GetOuterAUTWeaponLocker(), bAllowPickup))
-			{
-				Copy = Recipient->CreateInventory<AUTWeapon>(LocalInventoryType, true);
-				if (Copy)
-				{
-					GetOuterAUTWeaponLocker()->AnnouncePickup(Recipient, LocalInventoryType);
-				}
-			}
-		}
-
-		if (Copy && Copy->PickupSound)
-		{
-			UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, GetOuterAUTWeaponLocker(), SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
-		}
-	}
+	GetOuterAUTWeaponLocker()->GiveLockerWeaponsInternal(Other, bHideWeapons);
 }
 
 void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects)
@@ -492,7 +518,7 @@ void AUTWeaponLocker::ShowActive()
 }
 
 // Note: This is only in LockerPickup state
-void UUTWeaponLockerStatePickup::ShowActive()
+void UUTWeaponLockerStatePickup::ShowActive_Implementation()
 {
 	GetOuterAUTWeaponLocker()->bIsActive = true;
 	GetOuterAUTWeaponLocker()->NextProximityCheckTime = 0.f;
@@ -549,7 +575,7 @@ void AUTWeaponLocker::GotoState(UUTWeaponLockerState* NewState)
 			UUTWeaponLockerState* PrevState = CurrentState;
 			if (CurrentState != NULL)
 			{
-				CurrentState->EndState(); // NOTE: may trigger another GotoState() call
+				CurrentState->EndState(NewState); // NOTE: may trigger another GotoState() call
 			}
 			if (CurrentState == PrevState)
 			{
@@ -708,13 +734,160 @@ void AUTWeaponLocker::CheckForErrors()
 				->AddToken(FTextToken::Create(FText::Format(Message, Arguments)));
 		}
 	}
+
+	TArray<FString> StateErrors;
+	if (HasStateErrors(StateErrors))
+	{
+		FFormatNamedArguments Arguments;
+		Arguments.Add(TEXT("ActorName"), FText::FromString(GetName()));
+
+		for (auto StateError : StateErrors)
+		{
+			FMessageLog("MapCheck").Warning()
+				->AddToken(FUObjectToken::Create(this))
+				->AddToken(FTextToken::Create(FText::Format(FText::FromString(StateError), Arguments)));
+		}
+	}
+}
+
+void AUTWeaponLocker::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	const FName PropertyName = (PropertyChangedEvent.Property != nullptr) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+	const FName MemberName = (PropertyChangedEvent.MemberProperty != nullptr) ? PropertyChangedEvent.MemberProperty->GetFName() : NAME_None;
+
+	if (PropertyName != MemberName && MemberName == GET_MEMBER_NAME_CHECKED(AUTWeaponLocker, States))
+	{
+		// count auto states
+		TArray<FString> AutoStates;
+		TArray<FString> NoNamesStates;
+		TArray<FString> DupNamesStates;
+		TArray<FName> StateNames;
+		for (int32 i = 0; i < States.Num(); i++)
+		{
+			FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].StateClass ? *States[i].StateClass->GetName() : TEXT("None"));
+			if (States[i].bAuto)
+			{
+				AutoStates.Add(StateInfo);
+			}
+
+			if (States[i].StateName.IsNone())
+			{
+				NoNamesStates.Add(StateInfo);
+			}
+			else
+			{
+				if (StateNames.Find(States[i].StateName) > INDEX_NONE)
+				{
+					DupNamesStates.Add(StateInfo);
+				}
+				StateNames.Add(States[i].StateName);
+			}
+		}
+
+		FString(*JoinArray)(const TArray<FString>& InStates, FString Delimiter);
+		JoinArray = [](const TArray<FString>& InStates, FString Delimiter)
+		{
+			FString Str;
+			if (InStates.Num() > 0)
+			{
+				Str = InStates[0];
+				for (int32 i = 1; i < InStates.Num(); i++)
+				{
+					Str += Delimiter;
+					Str += InStates[i];
+				}
+			}
+			return Str;
+		};
+
+		TArray<FString> MessageStrs;
+		if (AutoStates.Num() > 1)
+		{
+			MessageStrs.Add(FString::Printf(TEXT("Multiple States have 'Auto' flag set:\n%s"), *JoinArray(AutoStates, FString(TEXT("\n")))));
+		}
+		if (NoNamesStates.Num() > 0)
+		{
+			MessageStrs.Add(FString::Printf(TEXT("Some States have no name:\n%s"), *JoinArray(NoNamesStates, FString(TEXT("\n")))));
+		}
+		if (DupNamesStates.Num() > 0)
+		{
+			MessageStrs.Add(FString::Printf(TEXT("Duplicate state names found:\n%s"), *JoinArray(DupNamesStates, FString(TEXT("\n")))));
+		}
+
+		if (MessageStrs.Num() > 0)
+		{
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(JoinArray(MessageStrs, FString(TEXT("\n\n")))));
+		}
+	}
+}
+
+bool AUTWeaponLocker::HasStateErrors(TArray<FString>& StateErrors)
+{
+	TArray<FString> AutoStates;
+	TArray<FString> NoNamesStates;
+	TArray<FString> DupNamesStates;
+	TArray<FString> InvalidStates;
+	TArray<FName> StateNames;
+	for (int32 i = 0; i < States.Num(); i++)
+	{
+		FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].StateClass ? *States[i].StateClass->GetName() : TEXT("None"));
+		if (States[i].bAuto)
+		{
+			AutoStates.Add(StateInfo);
+		}
+
+		if (States[i].StateName.IsNone())
+		{
+			NoNamesStates.Add(StateInfo);
+		}
+		else
+		{
+			if (StateNames.Find(States[i].StateName) > INDEX_NONE)
+			{
+				DupNamesStates.Add(StateInfo);
+			}
+			StateNames.Add(States[i].StateName);
+		}
+
+		if (States[i].StateClass == NULL)
+		{
+			InvalidStates.Add(StateInfo);
+		}
+	}
+
+	if (AutoStates.Num() > 1)
+	{
+		StateErrors.Add(FString(TEXT("Multiple states have 'Auto' flag set.")));
+	}
+	if (NoNamesStates.Num() > 0)
+	{
+		StateErrors.Add(FString(TEXT("Some states have no name.")));
+	}
+	if (DupNamesStates.Num() > 0)
+	{
+		StateErrors.Add(FString(TEXT("Duplicate state names found.")));
+	}
+	if (InvalidStates.Num() > 0)
+	{
+		StateErrors.Add(FString(TEXT("Some states have no class set.")));
+	}
+
+	return StateErrors.Num() > 0;
 }
 
 #endif // WITH_EDITOR
 
-void UUTWeaponLockerStateDisabled::BeginState(const UUTWeaponLockerState* PrevState)
+void UUTWeaponLockerStateDisabled::SetInitialState_Implementation()
 {
-	Super::BeginState(PrevState);
+	// override
+	return;
+}
+
+void UUTWeaponLockerStateDisabled::BeginState_Implementation(const UUTWeaponLockerState* PrevState)
+{
+	Super::BeginState_Implementation(PrevState);
 
 	GetOuterAUTWeaponLocker()->SetActorHiddenInGame(true);
 	GetOuterAUTWeaponLocker()->SetActorEnableCollision(false);
@@ -722,19 +895,19 @@ void UUTWeaponLockerStateDisabled::BeginState(const UUTWeaponLockerState* PrevSt
 	GetOuterAUTWeaponLocker()->ShowHidden();
 }
 
-float UUTWeaponLockerStateDisabled::BotDesireability(APawn* Asker, float TotalDistance)
+float UUTWeaponLockerStateDisabled::BotDesireability_Implementation(APawn* Asker, float TotalDistance)
 {
 	return 0.f;
 }
 
-bool UUTWeaponLockerStateDisabled::OverrideProcessTouch(APawn* TouchedBy)
+bool UUTWeaponLockerStateDisabled::OverrideProcessTouch_Implementation(APawn* TouchedBy)
 {
 	return true;
 }
 
-void UUTWeaponLockerStatePickup::BeginState(const UUTWeaponLockerState* PrevState)
+void UUTWeaponLockerStatePickup::BeginState_Implementation(const UUTWeaponLockerState* PrevState)
 {
-	Super::BeginState(PrevState);
+	Super::BeginState_Implementation(PrevState);
 
 	// allow to re-enable weapon locker
 	GetOuterAUTWeaponLocker()->SetActorHiddenInGame(false);
@@ -743,7 +916,7 @@ void UUTWeaponLockerStatePickup::BeginState(const UUTWeaponLockerState* PrevStat
 	GetOuterAUTWeaponLocker()->ShowActive();
 }
 
-bool UUTWeaponLockerStatePickup::OverrideProcessTouch(APawn* TouchedBy)
+bool UUTWeaponLockerStatePickup::OverrideProcessTouch_Implementation(APawn* TouchedBy)
 {
 	// handle client effects (hiding weapons in locker).
 	// ProcessTouch is aborting on the cient machine and won't trigger GiveLockerWeapons
@@ -759,9 +932,9 @@ bool UUTWeaponLockerStatePickup::OverrideProcessTouch(APawn* TouchedBy)
 	return false;
 }
 
-void UUTWeaponLockerStatePickup::Tick(float DeltaTime)
+void UUTWeaponLockerStatePickup::Tick_Implementation(float DeltaTime)
 {
-	Super::Tick(DeltaTime);
+	Super::Tick_Implementation(DeltaTime);
 
 	auto WL = GetOuterAUTWeaponLocker();
 	if (WL == NULL)
@@ -796,7 +969,7 @@ void UUTWeaponLockerStatePickup::Tick(float DeltaTime)
 
 		if (WL->bScalingUp && WL->ScaleRate > 0.f)
 		{
-			WL->CurrentWeaponScaleX += DeltaTime * WL->ScaleRate;;
+			WL->CurrentWeaponScaleX += DeltaTime * WL->ScaleRate;
 			if (WL->CurrentWeaponScaleX >= 1.f)
 			{
 				WL->CurrentWeaponScaleX = 1.f;
