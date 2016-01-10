@@ -44,9 +44,11 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 
 	if (TimerEffect != NULL)
 	{
+		TimerEffect->AttachParent = RootComponent;
 		TimerEffect->SetActive(false, false);
 	}
 
+	LockerRespawnTime = 30.f;
 	LockerString = LOCTEXT("LockerString", "Weapon Locker");
 
 	LockerPositions.Add(FVector(18.0, -30.0, 0.f));
@@ -66,17 +68,22 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	ScaleRate = 2.f;
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
-
-	States.AddDefaulted();
-	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateDisabled>(this, TEXT("StateDisabled"));
-	States.Last().StateName = FName(TEXT("Disabled"));
-	DisabledState = States.Last().StateClass;
 	
 	States.AddDefaulted();
 	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStatePickup>(this, TEXT("StatePickup"));
 	States.Last().StateName = FName(TEXT("Pickup"));
 	States.Last().bAuto = true;
 	PickupState = States.Last().StateClass;
+
+	States.AddDefaulted();
+	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateDisabled>(this, TEXT("StateDisabled"));
+	States.Last().StateName = FName(TEXT("Disabled"));
+	DisabledState = States.Last().StateClass;
+
+	States.AddDefaulted();
+	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateSleeping>(this, TEXT("StateSleeping"));
+	States.Last().StateName = FName(TEXT("Sleeping"));
+	SleepingState = States.Last().StateClass;
 
 	// Structure to hold one-time initialization
 	struct FConstructorStaticsWarn
@@ -129,7 +136,9 @@ void AUTWeaponLocker::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(AUTWeaponLocker, bIsDisabled, COND_InitialOnly);
+	DOREPLIFETIME(AUTWeaponLocker, LockerRespawnTime);
+	DOREPLIFETIME(AUTWeaponLocker, bIsSleeping);
+	DOREPLIFETIME(AUTWeaponLocker, bIsDisabled);
 	DOREPLIFETIME_CONDITION(AUTWeaponLocker, ReplacementWeapons, COND_InitialOnly);
 }
 
@@ -209,6 +218,11 @@ void AUTWeaponLocker::Reset_Implementation()
 		WakeUp();
 	}
 
+	if (!bIsDisabled && IsInState(SleepingState))
+	{
+		GotoState(PickupState);
+	}
+
 	// TODO: Clear customers
 }
 
@@ -268,7 +282,7 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 			RegisterLocalPlayer(DriverPawn->GetController());
 
 			ShowHidden();
-			GetWorldTimerManager().SetTimer(HideWeaponsHandle, this, &AUTWeaponLocker::ShowActive, 30.f, false);
+			GetWorldTimerManager().SetTimer(HideWeaponsHandle, this, &AUTWeaponLocker::ShowActive, LockerRespawnTime, false);
 		}
 	}
 
@@ -280,28 +294,30 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 	AUTGameMode* UTGameMode = GetWorld()->GetAuthGameMode<AUTGameMode>();
 	for (int32 i = 0; i < Weapons.Num(); i++)
 	{
-		TSubclassOf<AUTWeapon> LocalInventoryType = Weapons[i].WeaponClass;
-		AUTWeapon* Copy = Recipient->FindInventoryType<AUTWeapon>(LocalInventoryType, true);
-		if (Copy != NULL)
+		if (TSubclassOf<AUTWeapon> LocalInventoryType = Weapons[i].WeaponClass)
 		{
-			Copy->StackPickup(NULL);
-		}
-		else
-		{
-			bool bAllowPickup = true;
-			if (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, this, bAllowPickup))
+			AUTWeapon* Copy = Recipient->FindInventoryType<AUTWeapon>(LocalInventoryType, true);
+			if (Copy != NULL)
 			{
-				Copy = Recipient->CreateInventory<AUTWeapon>(LocalInventoryType, true);
-				if (Copy)
+				Copy->StackPickup(NULL);
+			}
+			else
+			{
+				bool bAllowPickup = true;
+				if (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, this, bAllowPickup))
 				{
-					AnnouncePickup(Recipient, LocalInventoryType);
+					Copy = Recipient->CreateInventory<AUTWeapon>(LocalInventoryType, true);
+					if (Copy)
+					{
+						AnnouncePickup(Recipient, LocalInventoryType);
+					}
 				}
 			}
-		}
 
-		if (Copy && Copy->PickupSound)
-		{
-			UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
+			if (Copy && Copy->PickupSound)
+			{
+				UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
+			}
 		}
 	}
 }
@@ -453,7 +469,7 @@ bool AUTWeaponLocker::AddCustomer(APawn* P)
 			{
 				if (Customers[i].P == P)
 				{
-					Customers[i].NextPickupTime = GetWorld()->TimeSeconds + 30;
+					Customers[i].NextPickupTime = GetWorld()->TimeSeconds + LockerRespawnTime;
 					return true;
 				}
 				Customers.RemoveAt(i, 1);
@@ -466,7 +482,7 @@ bool AUTWeaponLocker::AddCustomer(APawn* P)
 		}
 	}
 
-	FWeaponPickupCustomer PT(P, GetWorld()->TimeSeconds + 30);
+	FWeaponPickupCustomer PT(P, GetWorld()->TimeSeconds + LockerRespawnTime);
 	Customers.Add(PT);
 	return true;
 }
@@ -507,6 +523,11 @@ void AUTWeaponLocker::ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeapo
 void AUTWeaponLocker::StartSleeping_Implementation()
 {
 	// override original sleeping mechanism
+
+	if (CurrentState)
+	{
+		CurrentState->StartSleeping();
+	}
 }
 
 void AUTWeaponLocker::ShowActive()
@@ -905,6 +926,45 @@ bool UUTWeaponLockerStateDisabled::OverrideProcessTouch_Implementation(APawn* To
 	return true;
 }
 
+void UUTWeaponLockerStateSleeping::StartSleeping_Implementation()
+{
+}
+
+void UUTWeaponLockerStateSleeping::BeginState_Implementation(const UUTWeaponLockerState* PrevState)
+{
+	Super::BeginState_Implementation(PrevState);
+
+	GetOuterAUTWeaponLocker()->SetActorEnableCollision(false);
+	GetOuterAUTWeaponLocker()->ShowHidden();
+
+	GetOuterAUTWeaponLocker()->bIsSleeping = true;
+	if (GetWorld()->GetNetMode() != NM_DedicatedServer)
+	{
+		GetOuterAUTWeaponLocker()->OnRep_IsSleeping();
+	}
+}
+
+void UUTWeaponLockerStateSleeping::EndState_Implementation(const UUTWeaponLockerState* NextState)
+{
+	Super::EndState_Implementation(NextState);
+
+	GetOuterAUTWeaponLocker()->bIsSleeping = false;
+	if (GetWorld()->GetNetMode() != NM_DedicatedServer)
+	{
+		GetOuterAUTWeaponLocker()->OnRep_IsSleeping();
+	}
+}
+
+float UUTWeaponLockerStateSleeping::BotDesireability_Implementation(APawn* Asker, float TotalDistance)
+{
+	return 0.f;
+}
+
+bool UUTWeaponLockerStateSleeping::OverrideProcessTouch_Implementation(APawn* TouchedBy)
+{
+	return true;
+}
+
 void UUTWeaponLockerStatePickup::BeginState_Implementation(const UUTWeaponLockerState* PrevState)
 {
 	Super::BeginState_Implementation(PrevState);
@@ -930,6 +990,14 @@ bool UUTWeaponLockerStatePickup::OverrideProcessTouch_Implementation(APawn* Touc
 	}
 
 	return false;
+}
+
+void UUTWeaponLockerStatePickup::StartSleeping_Implementation()
+{
+	if (GetOuterAUTWeaponLocker()->LockerRespawnTime <= 0.f)
+	{
+		GetOuterAUTWeaponLocker()->GotoState(GetOuterAUTWeaponLocker()->SleepingState);
+	}
 }
 
 void UUTWeaponLockerStatePickup::Tick_Implementation(float DeltaTime)

@@ -117,6 +117,10 @@ class AUTWeaponLocker : public AUTPickup
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Effects)
 	UParticleSystem* WeaponSpawnEffectTemplate;
 
+	/** respawn time for the Locker; if it's <= 0 then the pickup doesn't respawn until the round resets */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = Locker)
+	float LockerRespawnTime;
+
 	/** Locker message to display on player HUD. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Locker)
 	FText LockerString;
@@ -216,6 +220,13 @@ class AUTWeaponLocker : public AUTPickup
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeaponClass);
 
+	/** In sleeping state */
+	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsSleeping, Category = Locker)
+	uint32 bIsSleeping : 1;
+
+	UFUNCTION(BlueprintImplementableEvent)
+	virtual void OnRep_IsSleeping();
+
 	/** In disabled state */
 	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsDisabled, Category = Locker)
 	uint32 bIsDisabled : 1;
@@ -270,6 +281,59 @@ class AUTWeaponLocker : public AUTPickup
 		}
 	}
 
+	/**
+	* Checks the current state and determines whether or not this object
+	* is actively in the specified state.  Note: This does work with
+	* inherited states.
+	*
+	* @param	TestState - state to check for
+	*
+	* @return	True if currently in TestState
+	*/
+	UFUNCTION(BlueprintPure, Category = Pickup)
+	virtual bool IsInState(class UUTWeaponLockerState* TestState)
+	{
+		return TestState == CurrentState;
+	}
+
+	/**
+	* Checks the current state and determines whether or not this object
+	* is actively in the specified state.  Note: This does work with
+	* inherited states.
+	*
+	* @param	TestStateName - state to check for
+	*
+	* @return	True if currently in the state with the name of TestStateName
+	*/
+	UFUNCTION(BlueprintPure, Category = Pickup)
+	virtual bool IsInStateByName(FName TestStateName)
+	{
+		if (TestStateName.IsNone())
+		{
+			return IsInState(GlobalState);
+		}
+		else if (FStateMap* TestState = States.FindByPredicate([&](const FStateMap& StateMap){ return StateMap.StateName == TestStateName; }))
+		{
+			return IsInState(TestState->StateClass);
+		}
+
+		return false;
+	}
+
+	UFUNCTION(BlueprintPure, Category = Pickup)
+	virtual FName GetStateName()
+	{
+		if (CurrentState)
+		{
+			if (FStateMap* CurrentStateMap = States.FindByPredicate([&](const FStateMap& StateMap){ return StateMap.StateClass == CurrentState; }))
+			{
+				return CurrentStateMap->StateName;
+			}
+		}
+		
+		return NAME_None;
+	}
+
 	/** notification of state change (CurrentState is new state)
 	* if a state change triggers another state change (i.e. within BeginState()/EndState())
 	* this function will only be called once, when CurrentState is the final state
@@ -288,11 +352,14 @@ protected:
 	UPROPERTY(Instanced, NoClear, EditDefaultsOnly, BlueprintReadOnly, Category = "State")
 	UUTWeaponLockerState* GlobalState;
 
-	UPROPERTY(BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (AllowPrivateAccess = "true"))
+	UUTWeaponLockerState* PickupState;
+
+	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* DisabledState;
 
-	UPROPERTY(BlueprintReadOnly, Category = "State", meta = (AllowPrivateAccess = "true"))
-	UUTWeaponLockerState* PickupState;
+	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (AllowPrivateAccess = "true"))
+	UUTWeaponLockerState* SleepingState;
 
 	UFUNCTION(BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
 	virtual void SetInitialStateGlobal(); // TODO: Add BlueprintNativeEvent
@@ -347,6 +414,9 @@ class UUTWeaponLockerState : public UObject
 	bool OverrideProcessTouch(APawn* TouchedBy);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	void StartSleeping();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
 	void ShowActive();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
@@ -370,6 +440,7 @@ inline bool UUTWeaponLockerState::OverrideProcessTouch_Implementation(APawn* Tou
 {
 	return false;
 }
+inline void UUTWeaponLockerState::StartSleeping_Implementation(){ return; }
 inline void UUTWeaponLockerState::ShowActive_Implementation(){ return; }
 inline void UUTWeaponLockerState::GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons){ return; }
 inline float UUTWeaponLockerState::BotDesireability_Implementation(APawn* Asker, float TotalDistance)
@@ -394,6 +465,22 @@ class UUTWeaponLockerStateDisabled : public UUTWeaponLockerState
 };
 
 UCLASS(CustomConstructor)
+class UUTWeaponLockerStateSleeping : public UUTWeaponLockerState
+{
+	GENERATED_UCLASS_BODY()
+
+	UUTWeaponLockerStateSleeping(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+	{}
+
+	virtual void BeginState_Implementation(const UUTWeaponLockerState* PrevState) override;
+	virtual void EndState_Implementation(const UUTWeaponLockerState* NextState) override;
+	virtual void StartSleeping_Implementation() override;
+	virtual bool OverrideProcessTouch_Implementation(APawn* TouchedBy) override;
+	virtual float BotDesireability_Implementation(APawn* Asker, float TotalDistance) override;
+};
+
+UCLASS(CustomConstructor)
 class UUTWeaponLockerStatePickup : public UUTWeaponLockerState
 {
 	GENERATED_UCLASS_BODY()
@@ -408,6 +495,7 @@ class UUTWeaponLockerStatePickup : public UUTWeaponLockerState
 
 	virtual void GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons) override;
 	virtual void ShowActive_Implementation() override;
+	virtual void StartSleeping_Implementation() override;
 
 	virtual void NotifyLocalPlayerDead_Implementation(APlayerController* PC) override;
 };
