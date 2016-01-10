@@ -291,6 +291,7 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 	if (bHideWeapons && !AddCustomer(Recipient))
 		return;
 
+	bool bWeaponAdded = false;
 	AUTGameMode* UTGameMode = GetWorld()->GetAuthGameMode<AUTGameMode>();
 	for (int32 i = 0; i < Weapons.Num(); i++)
 	{
@@ -306,8 +307,11 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 				bool bAllowPickup = true;
 				if (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, this, bAllowPickup))
 				{
-					Copy = Recipient->CreateInventory<AUTWeapon>(LocalInventoryType, true);
-					if (Copy)
+					FActorSpawnParameters Params;
+					Params.bNoCollisionFail = true;
+					Params.Instigator = Recipient;
+					Copy = GetWorld()->SpawnActor<AUTWeapon>(LocalInventoryType, GetActorLocation(), GetActorRotation(), Params);
+					if (Copy && Recipient->AddInventory(Copy, true))
 					{
 						AnnouncePickup(Recipient, LocalInventoryType);
 					}
@@ -319,6 +323,11 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 				UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
 			}
 		}
+	}
+
+	if (bWeaponAdded)
+	{
+		Recipient->DeactivateSpawnProtection();
 	}
 }
 
