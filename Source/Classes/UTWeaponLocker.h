@@ -352,15 +352,33 @@ protected:
 	UPROPERTY(Instanced, NoClear, EditDefaultsOnly, BlueprintReadOnly, Category = "State")
 	UUTWeaponLockerState* GlobalState;
 
-	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* PickupState;
 
-	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (AllowPrivateAccess = "true"))
+	UFUNCTION(BlueprintPure, Category = "State")
+	UUTWeaponLockerState* GetPickupState()
+	{
+		return PickupState;
+	}
+
+	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* DisabledState;
 
-	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (AllowPrivateAccess = "true"))
+	UFUNCTION(BlueprintPure, Category = "State")
+	UUTWeaponLockerState* GetDisabledState()
+	{
+		return DisabledState;
+	}
+
+	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* SleepingState;
 
+	UFUNCTION(BlueprintPure, Category = "State")
+	UUTWeaponLockerState* GetSleepingState()
+	{
+		return SleepingState;
+	}
+	
 	UFUNCTION(BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
 	virtual void SetInitialStateGlobal(); // TODO: Add BlueprintNativeEvent
 
