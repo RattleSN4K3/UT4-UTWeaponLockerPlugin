@@ -295,26 +295,20 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 	AUTGameMode* UTGameMode = GetWorld()->GetAuthGameMode<AUTGameMode>();
 	for (int32 i = 0; i < Weapons.Num(); i++)
 	{
-		if (TSubclassOf<AUTWeapon> LocalInventoryType = Weapons[i].WeaponClass)
+		bool bAllowPickup = true;
+		TSubclassOf<AUTWeapon> LocalInventoryType = Weapons[i].WeaponClass;
+		if (LocalInventoryType && (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, this, bAllowPickup) || bAllowPickup))
 		{
 			AUTWeapon* Copy = Recipient->FindInventoryType<AUTWeapon>(LocalInventoryType, true);
-			if (Copy != NULL)
+			if (Copy == NULL || !Copy->StackPickup(NULL))
 			{
-				Copy->StackPickup(NULL);
-			}
-			else
-			{
-				bool bAllowPickup = true;
-				if (UTGameMode == NULL || !UTGameMode->OverridePickupQuery(Recipient, LocalInventoryType, this, bAllowPickup))
+				FActorSpawnParameters Params;
+				Params.bNoCollisionFail = true;
+				Params.Instigator = Recipient;
+				Copy = GetWorld()->SpawnActor<AUTWeapon>(LocalInventoryType, GetActorLocation(), GetActorRotation(), Params);
+				if (Copy && Recipient->AddInventory(Copy, true))
 				{
-					FActorSpawnParameters Params;
-					Params.bNoCollisionFail = true;
-					Params.Instigator = Recipient;
-					Copy = GetWorld()->SpawnActor<AUTWeapon>(LocalInventoryType, GetActorLocation(), GetActorRotation(), Params);
-					if (Copy && Recipient->AddInventory(Copy, true))
-					{
-						AnnouncePickup(Recipient, LocalInventoryType);
-					}
+					AnnouncePickup(Recipient, LocalInventoryType);
 				}
 			}
 
