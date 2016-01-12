@@ -4,24 +4,69 @@
 
 class UUTWeaponLockerState;
 
+UCLASS(Abstract, CustomConstructor)
+class UScriptState : public UObject
+{
+	GENERATED_UCLASS_BODY()
+
+	UScriptState(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+	{}
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State)
+	FName DefaultStateName;
+};
+
 USTRUCT(BlueprintType)
-struct FStateMap
+struct FStateInfo
 {
 	GENERATED_USTRUCT_BODY()
 
-	UPROPERTY(Instanced, NoClear, EditDefaultsOnly, BlueprintReadOnly, Category = State)
-	class UUTWeaponLockerState* StateClass;
+	UPROPERTY(NoClear, EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	TSubclassOf<class UUTWeaponLockerState> StateClass;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State)
+	UPROPERTY(BlueprintReadOnly, Category = State)
+	class UUTWeaponLockerState* State;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	FName StateName;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	uint32 bAuto : 1;
 
-	FStateMap()
+	UPROPERTY()
+	uint32 bUserChanged : 1;
+
+	FORCEINLINE FStateInfo()
 		: StateName(FName(TEXT("")))
 		, bAuto(0)
 	{}
+	
+	FORCEINLINE FStateInfo(TSubclassOf<UUTWeaponLockerState> InStateClass)
+		: FStateInfo(InStateClass, true)
+	{}
+
+	FORCEINLINE FStateInfo(TSubclassOf<class UUTWeaponLockerState> InStateClass, FName InStateName)
+		: FStateInfo(InStateClass, InStateName, true)
+	{}
+
+	FORCEINLINE FStateInfo(TSubclassOf<class UUTWeaponLockerState> InStateClass, bool InAuto)
+		: StateClass(InStateClass)
+		, bAuto(InAuto)
+	{
+		TSubclassOf<UScriptState> DefaultStateClass = InStateClass;
+		if (DefaultStateClass && StateName.IsNone())
+		{
+			StateName = DefaultStateClass.GetDefaultObject()->DefaultStateName;
+		}
+	}
+
+	FORCEINLINE FStateInfo(TSubclassOf<UUTWeaponLockerState> InStateClass, FName InStateName, bool InAuto)
+		: FStateInfo(InStateClass, InAuto)
+	{
+		StateName = InStateName;
+		bUserChanged = true;
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -131,9 +176,13 @@ class AUTWeaponLocker : public AUTPickup
 		return LockerString;
 	}
 
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "PreBeginPlay"))
+	virtual void ReceivePreBeginPlay();
+
 	//Begin AActor Interface
 	virtual void BeginPlay() override;
 	virtual void PreInitializeComponents() override;
+	virtual void PostInitializeComponents() override;
 	virtual void Tick(float DeltaTime) override;
 	//End AActor Interface
 
@@ -254,8 +303,14 @@ class AUTWeaponLocker : public AUTPickup
 	UFUNCTION()
 	virtual void OnPawnDied(AController* Killer, const UDamageType* DamageType);
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State)
-	TArray<FStateMap> States;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	TArray<FStateInfo> States;
+
+	UFUNCTION(BlueprintPure, Category = State)
+	TArray<FStateInfo> GetStates()
+	{
+		return States;
+	}
 
 	inline UUTWeaponLockerState* GetCurrentState()
 	{
@@ -275,9 +330,9 @@ class AUTWeaponLocker : public AUTPickup
 		{
 			GotoState(GlobalState);
 		}
-		else if (FStateMap* NewState = States.FindByPredicate([&](const FStateMap& StateMap){ return StateMap.StateName == NewStateName; }))
+		else if (FStateInfo* NewState = States.FindByPredicate([&](const FStateInfo& StateInfo){ return StateInfo.StateName == NewStateName; }))
 		{
-			GotoState(NewState->StateClass);
+			GotoState(NewState->State);
 		}
 	}
 
@@ -312,9 +367,9 @@ class AUTWeaponLocker : public AUTPickup
 		{
 			return IsInState(GlobalState);
 		}
-		else if (FStateMap* TestState = States.FindByPredicate([&](const FStateMap& StateMap){ return StateMap.StateName == TestStateName; }))
+		else if (FStateInfo* TestState = States.FindByPredicate([&](const FStateInfo& StateInfo){ return StateInfo.StateName == TestStateName; }))
 		{
-			return IsInState(TestState->StateClass);
+			return IsInState(TestState->State);
 		}
 
 		return false;
@@ -325,9 +380,9 @@ class AUTWeaponLocker : public AUTPickup
 	{
 		if (CurrentState)
 		{
-			if (FStateMap* CurrentStateMap = States.FindByPredicate([&](const FStateMap& StateMap){ return StateMap.StateClass == CurrentState; }))
+			if (FStateInfo* CurrentStateInfo = States.FindByPredicate([&](const FStateInfo& StateInfo){ return StateInfo.State == CurrentState; }))
 			{
-				return CurrentStateMap->StateName;
+				return CurrentStateInfo->StateName;
 			}
 		}
 		
@@ -389,6 +444,7 @@ protected:
 public:
 	virtual void CheckForErrors() override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 
 	virtual bool HasStateErrors(TArray<FString>& StateErrors);
 protected:
@@ -397,7 +453,7 @@ protected:
 };
 
 UCLASS(Blueprintable, DefaultToInstanced, EditInlineNew, CustomConstructor, Within = UTWeaponLocker)
-class UUTWeaponLockerState : public UObject
+class UUTWeaponLockerState : public UScriptState
 {
 	GENERATED_UCLASS_BODY()
 
@@ -474,7 +530,9 @@ class UUTWeaponLockerStateDisabled : public UUTWeaponLockerState
 
 	UUTWeaponLockerStateDisabled(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
-	{}
+	{
+		DefaultStateName = FName(TEXT("Disabled"));
+	}
 
 	virtual void SetInitialState_Implementation() override;
 	virtual void BeginState_Implementation(const UUTWeaponLockerState* PrevState) override;
@@ -489,7 +547,9 @@ class UUTWeaponLockerStateSleeping : public UUTWeaponLockerState
 
 	UUTWeaponLockerStateSleeping(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
-	{}
+	{
+		DefaultStateName = FName(TEXT("Sleeping"));
+	}
 
 	virtual void BeginState_Implementation(const UUTWeaponLockerState* PrevState) override;
 	virtual void EndState_Implementation(const UUTWeaponLockerState* NextState) override;
@@ -505,7 +565,9 @@ class UUTWeaponLockerStatePickup : public UUTWeaponLockerState
 
 	UUTWeaponLockerStatePickup(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
-	{}
+	{
+		DefaultStateName = FName(TEXT("Pickup"));
+	}
 
 	virtual void BeginState_Implementation(const UUTWeaponLockerState* PrevState) override;
 	virtual bool OverrideProcessTouch_Implementation(APawn* TouchedBy) override;

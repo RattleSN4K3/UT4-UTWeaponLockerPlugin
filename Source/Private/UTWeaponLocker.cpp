@@ -69,21 +69,17 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
 	
-	States.AddDefaulted();
-	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStatePickup>(this, TEXT("StatePickup"));
-	States.Last().StateName = FName(TEXT("Pickup"));
-	States.Last().bAuto = true;
-	PickupState = States.Last().StateClass;
+	// FIX: Constructing default state infos will crash editor on start up
+	/*
+	FStateInfo PickupStateInfo(UUTWeaponLockerStatePickup::StaticClass(), true);
+	States.Add(PickupStateInfo);
 
-	States.AddDefaulted();
-	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateDisabled>(this, TEXT("StateDisabled"));
-	States.Last().StateName = FName(TEXT("Disabled"));
-	DisabledState = States.Last().StateClass;
+	FStateInfo DisabledStateInfo(UUTWeaponLockerStateDisabled::StaticClass());
+	States.Add(DisabledStateInfo);
 
-	States.AddDefaulted();
-	States.Last().StateClass = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerStateSleeping>(this, TEXT("StateSleeping"));
-	States.Last().StateName = FName(TEXT("Sleeping"));
-	SleepingState = States.Last().StateClass;
+	FStateInfo SleepingStateInfo(UUTWeaponLockerStateSleeping::StaticClass());
+	States.Add(SleepingStateInfo);
+	*/
 
 	// Structure to hold one-time initialization
 	struct FConstructorStaticsWarn
@@ -110,13 +106,37 @@ void AUTWeaponLocker::PreInitializeComponents()
 {
 	Super::PreInitializeComponents();
 
-	for (auto State : States)
+	if (!HasAnyFlags(RF_ClassDefaultObject))
 	{
-		if (State.bAuto)
+		for (auto& StateInfo : States)
 		{
-			AutoState = State.StateClass;
+			if (StateInfo.StateClass)
+			{
+				if (StateInfo.State == NULL)
+				{
+					StateInfo.State = NewObject<UUTWeaponLockerState>(this, StateInfo.StateClass);
+				}
+
+				if (StateInfo.bAuto)
+				{
+					AutoState = StateInfo.State;
+				}
+
+				if (StateInfo.StateName == FName(TEXT("Pickup")))
+					PickupState = StateInfo.State;
+				else if (StateInfo.StateName == FName(TEXT("Disabled")))
+					DisabledState = StateInfo.State;
+				else if (StateInfo.StateName == FName(TEXT("Sleeping")))
+					SleepingState = StateInfo.State;
+			}
 		}
 	}
+}
+
+void AUTWeaponLocker::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	ReceivePreBeginPlay();
 }
 
 void AUTWeaponLocker::BeginPlay()
@@ -790,7 +810,7 @@ void AUTWeaponLocker::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		TArray<FName> StateNames;
 		for (int32 i = 0; i < States.Num(); i++)
 		{
-			FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].StateClass ? *States[i].StateClass->GetName() : TEXT("None"));
+			FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].State ? *States[i].State->GetName() : TEXT("None"));
 			if (States[i].bAuto)
 			{
 				AutoStates.Add(StateInfo);
@@ -847,6 +867,39 @@ void AUTWeaponLocker::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 	}
 }
 
+void AUTWeaponLocker::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
+{
+	const FName MemberPropertyName = PropertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue()->GetFName();
+	const FName PropertyName = PropertyChangedEvent.PropertyChain.GetActiveNode()->GetValue()->GetFName();
+
+	if (PropertyChangedEvent.Property && PropertyName != MemberPropertyName && MemberPropertyName == GET_MEMBER_NAME_CHECKED(AUTWeaponLocker, States))
+	{
+		if (PropertyChangedEvent.ChangeType == EPropertyChangeType::ValueSet)
+		{
+			const FName TailPropName = PropertyChangedEvent.PropertyChain.GetTail()->GetValue()->GetFName();
+
+			int32 NewArrayIndex = PropertyChangedEvent.GetArrayIndex(MemberPropertyName.ToString());
+			if (States.IsValidIndex(NewArrayIndex))
+			{
+				if (TailPropName == GET_MEMBER_NAME_CHECKED(FStateInfo, StateClass))
+				{
+					TSubclassOf<UScriptState> DefaultStateClass = States[NewArrayIndex].StateClass;
+					if (DefaultStateClass && (States[NewArrayIndex].StateName.IsNone() || !States[NewArrayIndex].bUserChanged))
+					{
+						States[NewArrayIndex].StateName = DefaultStateClass.GetDefaultObject()->DefaultStateName;
+					}
+				}
+				else if (TailPropName == GET_MEMBER_NAME_CHECKED(FStateInfo, StateName))
+				{
+					States[NewArrayIndex].bUserChanged = true;
+				}
+			}
+		}
+	}
+
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
+}
+
 bool AUTWeaponLocker::HasStateErrors(TArray<FString>& StateErrors)
 {
 	TArray<FString> AutoStates;
@@ -856,7 +909,7 @@ bool AUTWeaponLocker::HasStateErrors(TArray<FString>& StateErrors)
 	TArray<FName> StateNames;
 	for (int32 i = 0; i < States.Num(); i++)
 	{
-		FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].StateClass ? *States[i].StateClass->GetName() : TEXT("None"));
+		FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].State ? *States[i].State->GetName() : TEXT("None"));
 		if (States[i].bAuto)
 		{
 			AutoStates.Add(StateInfo);
@@ -875,7 +928,7 @@ bool AUTWeaponLocker::HasStateErrors(TArray<FString>& StateErrors)
 			StateNames.Add(States[i].StateName);
 		}
 
-		if (States[i].StateClass == NULL)
+		if (States[i].State == NULL)
 		{
 			InvalidStates.Add(StateInfo);
 		}
