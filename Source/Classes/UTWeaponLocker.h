@@ -261,9 +261,9 @@ class AUTWeaponLocker : public AUTPickup
 	virtual void SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects);
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
-	virtual void ShowActive(); // TODO: Add BlueprintNativeEvent
+	virtual void ShowActive();
 	UFUNCTION(BlueprintCallable, Category = Locker)
-	virtual void ShowHidden(); // TODO: Add BlueprintNativeEvent
+	virtual void ShowHidden();
 
 	/** replaces an entry in the Weapons array (generally used by mutators) */
 	UFUNCTION(BlueprintCallable, Category = Locker)
@@ -318,7 +318,7 @@ class AUTWeaponLocker : public AUTPickup
 	}
 
 	UFUNCTION(BlueprintCallable, Category = Pickup)
-	virtual void SetInitialState(); // TODO: Add BlueprintNativeEvent
+	virtual void SetInitialState();
 
 	UFUNCTION(BlueprintCallable, Category = Pickup)
 	virtual void GotoState(class UUTWeaponLockerState* NewState);
@@ -393,15 +393,17 @@ class AUTWeaponLocker : public AUTPickup
 	* if a state change triggers another state change (i.e. within BeginState()/EndState())
 	* this function will only be called once, when CurrentState is the final state
 	*/
-	virtual void StateChanged() // TODO: Add BlueprintNativeEvent
-	{}
+	UFUNCTION(BlueprintNativeEvent)
+	void StateChanged();
 
 protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "State")
 	UUTWeaponLockerState* CurrentState;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "State")
 	UUTWeaponLockerState* InitialState;
+
 	UUTWeaponLockerState* AutoState;
 
 	UPROPERTY(Instanced, NoClear, EditDefaultsOnly, BlueprintReadOnly, Category = "State")
@@ -434,8 +436,11 @@ protected:
 		return SleepingState;
 	}
 	
-	UFUNCTION(BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
-	virtual void SetInitialStateGlobal(); // TODO: Add BlueprintNativeEvent
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
+	void SetInitialStateGlobal();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
+	void ShowHiddenGlobal();
 
 	FTimerHandle HideWeaponsHandle;
 	FTimerHandle DestroyWeaponsHandle;
@@ -472,7 +477,7 @@ class UUTWeaponLockerState : public UScriptState
 		return GetOuterAUTWeaponLocker()->GetWorld();
 	}
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State, meta = (BlueprintProtected))
 	void SetInitialState();
 
 	UFUNCTION(BlueprintNativeEvent)
@@ -487,16 +492,19 @@ class UUTWeaponLockerState : public UScriptState
 	UFUNCTION(BlueprintNativeEvent)
 	bool OverrideProcessTouch(APawn* TouchedBy);
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
 	void StartSleeping();
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
 	void ShowActive();
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup, meta = (BlueprintProtected))
+	void ShowHidden();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup)
 	void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
 
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup)
 	float BotDesireability(APawn* Asker, float TotalDistance);
 
 	UFUNCTION(BlueprintNativeEvent)
@@ -516,6 +524,7 @@ inline bool UUTWeaponLockerState::OverrideProcessTouch_Implementation(APawn* Tou
 }
 inline void UUTWeaponLockerState::StartSleeping_Implementation(){ return; }
 inline void UUTWeaponLockerState::ShowActive_Implementation(){ return; }
+inline void UUTWeaponLockerState::ShowHidden_Implementation(){ GetOuterAUTWeaponLocker()->ShowHiddenGlobal(); }
 inline void UUTWeaponLockerState::GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons){ return; }
 inline float UUTWeaponLockerState::BotDesireability_Implementation(APawn* Asker, float TotalDistance)
 {

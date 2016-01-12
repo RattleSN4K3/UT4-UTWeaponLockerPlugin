@@ -131,6 +131,11 @@ void AUTWeaponLocker::PreInitializeComponents()
 			}
 		}
 	}
+
+	if (InitialState == NULL && AutoState == NULL)
+	{
+		InitialState = GlobalState;
+	}
 }
 
 void AUTWeaponLocker::PostInitializeComponents()
@@ -574,6 +579,18 @@ void UUTWeaponLockerStatePickup::ShowActive_Implementation()
 
 void AUTWeaponLocker::ShowHidden()
 {
+	if (CurrentState)
+	{
+		CurrentState->ShowHidden();
+	}
+	else
+	{
+		ShowHiddenGlobal();
+	}
+}
+
+void AUTWeaponLocker::ShowHiddenGlobal_Implementation()
+{
 	bIsActive = false;
 	SetPlayerNearby(nullptr, false, false);
 	if (AmbientEffect)
@@ -594,7 +611,7 @@ void AUTWeaponLocker::SetInitialState()
 	}
 }
 
-void AUTWeaponLocker::SetInitialStateGlobal()
+void AUTWeaponLocker::SetInitialStateGlobal_Implementation()
 {
 	if (bIsDisabled)
 	{
@@ -611,8 +628,10 @@ void AUTWeaponLocker::GotoState(UUTWeaponLockerState* NewState)
 	if (NewState == NULL || !NewState->IsIn(this))
 	{
 		UE_LOG(LogDebug, Warning, TEXT("Attempt to send %s to invalid state %s"), *GetName(), *GetFullNameSafe(NewState));
+		NewState = GlobalState;
 	}
-	else
+
+	if (NewState)
 	{
 		if (CurrentState != NewState)
 		{
@@ -629,6 +648,10 @@ void AUTWeaponLocker::GotoState(UUTWeaponLockerState* NewState)
 			}
 		}
 	}
+}
+
+void AUTWeaponLocker::StateChanged_Implementation()
+{
 }
 
 float AUTWeaponLocker::BotDesireability_Implementation(APawn* Asker, float TotalDistance)
