@@ -64,7 +64,7 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	WeaponLockerRotation = FRotator(0.f, 0.f, 270.f);
 	WeaponLockerScale3D = FVector(0.75, 0.65f, 0.75f);
 
-	ProximityDistanceSquared = 600000.0f;
+	ProximityDistanceSquared = 1500000.0f;
 	ScaleRate = 2.f;
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
