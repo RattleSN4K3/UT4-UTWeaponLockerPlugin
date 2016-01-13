@@ -69,8 +69,6 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
 	
-	// FIX: Constructing default state infos will crash editor on start up
-	/*
 	FStateInfo PickupStateInfo(UUTWeaponLockerStatePickup::StaticClass(), true);
 	States.Add(PickupStateInfo);
 
@@ -79,7 +77,6 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 
 	FStateInfo SleepingStateInfo(UUTWeaponLockerStateSleeping::StaticClass());
 	States.Add(SleepingStateInfo);
-	*/
 
 	// Structure to hold one-time initialization
 	struct FConstructorStaticsWarn

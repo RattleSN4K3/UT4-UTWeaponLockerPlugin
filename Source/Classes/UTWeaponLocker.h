@@ -25,7 +25,6 @@ struct FStateInfo
 	UPROPERTY(NoClear, EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	TSubclassOf<class UUTWeaponLockerState> StateClass;
 
-	UPROPERTY(BlueprintReadOnly, Category = State)
 	class UUTWeaponLockerState* State;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
@@ -509,6 +508,12 @@ class UUTWeaponLockerState : public UScriptState
 
 	UFUNCTION(BlueprintNativeEvent)
 	void NotifyLocalPlayerDead(APlayerController* PC);
+
+	UFUNCTION(BlueprintPure, Category = State)
+	static class UUTWeaponLockerState* GetState(const FStateInfo& StateInfo)
+	{
+		return StateInfo.State;
+	}
 };
 
 inline void UUTWeaponLockerState::SetInitialState_Implementation()
