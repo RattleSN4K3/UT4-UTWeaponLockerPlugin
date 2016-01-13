@@ -42,16 +42,17 @@ struct FStateInfo
 	{}
 	
 	FORCEINLINE FStateInfo(TSubclassOf<UUTWeaponLockerState> InStateClass)
-		: FStateInfo(InStateClass, true)
+		: FStateInfo(InStateClass, false)
 	{}
 
 	FORCEINLINE FStateInfo(TSubclassOf<class UUTWeaponLockerState> InStateClass, FName InStateName)
-		: FStateInfo(InStateClass, InStateName, true)
+		: FStateInfo(InStateClass, InStateName, false)
 	{}
 
 	FORCEINLINE FStateInfo(TSubclassOf<class UUTWeaponLockerState> InStateClass, bool InAuto)
 		: StateClass(InStateClass)
 		, bAuto(InAuto)
+		, bUserChanged(0)
 	{
 		TSubclassOf<UScriptState> DefaultStateClass = InStateClass;
 		if (DefaultStateClass && StateName.IsNone())
