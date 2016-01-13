@@ -401,7 +401,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "State")
 	UUTWeaponLockerState* CurrentState;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "State")
+	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* InitialState;
 
 	UUTWeaponLockerState* AutoState;
