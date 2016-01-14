@@ -44,6 +44,7 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 
 	if (TimerEffect != NULL)
 	{
+		TimerEffect->Mobility = EComponentMobility::Movable;
 		TimerEffect->AttachParent = RootComponent;
 		TimerEffect->SetActive(false, false);
 	}
