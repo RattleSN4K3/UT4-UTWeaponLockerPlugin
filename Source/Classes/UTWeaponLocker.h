@@ -23,41 +23,50 @@ struct FStateInfo
 	GENERATED_USTRUCT_BODY()
 
 	UPROPERTY(NoClear, EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
-	TSubclassOf<class UUTWeaponLockerState> StateClass;
+	TSubclassOf<UUTWeaponLockerState> StateClass;
 
-	class UUTWeaponLockerState* State;
+	UPROPERTY(Transient, BlueprintReadOnly, Category = State)
+	UUTWeaponLockerState* State;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	FName StateName;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
-	uint32 bAuto : 1;
+	bool bAuto;
 
 	UPROPERTY()
-	uint32 bUserChanged : 1;
+	bool bUserChanged;
 
 	FORCEINLINE FStateInfo()
-		: StateName(FName(TEXT("")))
-		, bAuto(0)
+		: StateClass(NULL)
+		, State(NULL)
+		, StateName(NAME_None)
+		, bAuto(false)
+		, bUserChanged(false)
 	{}
 	
 	FORCEINLINE FStateInfo(TSubclassOf<UUTWeaponLockerState> InStateClass)
 		: FStateInfo(InStateClass, false)
 	{}
 
-	FORCEINLINE FStateInfo(TSubclassOf<class UUTWeaponLockerState> InStateClass, FName InStateName)
+	FORCEINLINE FStateInfo(TSubclassOf<UUTWeaponLockerState> InStateClass, FName InStateName)
 		: FStateInfo(InStateClass, InStateName, false)
 	{}
 
-	FORCEINLINE FStateInfo(TSubclassOf<class UUTWeaponLockerState> InStateClass, bool InAuto)
+	FORCEINLINE FStateInfo(TSubclassOf<UUTWeaponLockerState> InStateClass, bool InAuto)
 		: StateClass(InStateClass)
+		, State(NULL)
 		, bAuto(InAuto)
-		, bUserChanged(0)
+		, bUserChanged(false)
 	{
 		TSubclassOf<UScriptState> DefaultStateClass = InStateClass;
 		if (DefaultStateClass && StateName.IsNone())
 		{
 			StateName = DefaultStateClass.GetDefaultObject()->DefaultStateName;
+		}
+		else
+		{
+			StateName = NAME_None;
 		}
 	}
 
@@ -457,7 +466,7 @@ protected:
 
 };
 
-UCLASS(Blueprintable, DefaultToInstanced, EditInlineNew, CustomConstructor, Within = UTWeaponLocker)
+UCLASS(Blueprintable, EditInlineNew, CustomConstructor, Within = UTWeaponLocker)
 class UUTWeaponLockerState : public UScriptState
 {
 	GENERATED_UCLASS_BODY()
@@ -509,12 +518,6 @@ class UUTWeaponLockerState : public UScriptState
 
 	UFUNCTION(BlueprintNativeEvent)
 	void NotifyLocalPlayerDead(APlayerController* PC);
-
-	UFUNCTION(BlueprintPure, Category = State)
-	static class UUTWeaponLockerState* GetState(const FStateInfo& StateInfo)
-	{
-		return StateInfo.State;
-	}
 };
 
 inline void UUTWeaponLockerState::SetInitialState_Implementation()
