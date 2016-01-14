@@ -125,6 +125,40 @@ class AUTWeaponLocker : public AUTPickup
 	// TODO: Move to UTWeapon as boolean flag
 	TArray<TSubclassOf<AUTWeapon>> WarnIfInLocker;
 
+	// TODO: Move to UTWeapon
+	TMap<TSubclassOf<AUTWeapon>, float> WeaponLockerAmmo;
+
+	int32 GetLockerAmmo(TSubclassOf<AUTWeapon> WeaponClass)
+	{
+		if (auto CDO = WeaponClass.GetDefaultObject())
+		{
+			int32 Ammo = WeaponClass.GetDefaultObject()->Ammo;
+			float* AmmoMultiplier = WeaponLockerAmmo.Find(WeaponClass);
+			if (AmmoMultiplier == NULL)
+			{
+				for (auto& Elem : WeaponLockerAmmo)
+				{
+					if (CDO->IsA(Elem.Key))
+					{
+						AmmoMultiplier = &Elem.Value;
+						break;
+					}
+				}
+			}
+
+			if (AmmoMultiplier)
+			{
+				// Multiply weapon ammo count if value is negative, otherwise use the stored value
+				float AmmoFactor = *AmmoMultiplier;
+				Ammo = FMath::TruncToInt(AmmoFactor >= 0.f ? AmmoFactor : FMath::Abs((float)CDO->Ammo * AmmoFactor));
+			}
+
+			return Ammo;
+		}
+
+		return 0;
+	}
+
 	/** base mesh */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Base")
 	UStaticMeshComponent* BaseMesh;

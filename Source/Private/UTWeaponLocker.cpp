@@ -9,7 +9,16 @@
 #include "UTWorldSettings.h"
 #include "UTPickupMessage.h"
 
+#include "UTWeap_BioRifle.h"
+#include "UTWeap_ShockRifle.h"
+#include "UTWeap_RocketLauncher.h"
+#include "UTWeap_LinkGun.h"
+#include "UTWeap_FlakCannon.h"
+
 #define LOCTEXT_NAMESPACE "UTWeaponLocker"
+
+static FString NewLine = FString(TEXT("\n"));
+static FString NewParagraph = FString(TEXT("\n\n"));
 
 AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer
@@ -98,6 +107,27 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	WarnIfInLocker.AddUnique(ConstructorStaticsWarn.Sniper.Object);
 	//WarnIfInLocker.AddUnique(ConstructorStaticsWarn.Avril.Object);
 	WarnIfInLocker.Remove(NULL);
+
+
+	// Structure to hold one-time initialization
+	struct FConstructorStaticsAmmo
+	{
+		ConstructorHelpers::FObjectFinder<UClass> Stinger;
+
+		FConstructorStaticsAmmo()
+			: Stinger(TEXT("Class'/Game/RestrictedAssets/Weapons/Minigun/BP_Minigun.BP_Minigun_C'"))
+		{
+		}
+	};
+	static FConstructorStaticsAmmo ConstructorStaticsAmmo;
+
+	// negative to multiple ammo by its absolute value
+	WeaponLockerAmmo.Add(AUTWeap_BioRifle::StaticClass(), -2.f);
+	WeaponLockerAmmo.Add(AUTWeap_ShockRifle::StaticClass(), -1.5f);
+	WeaponLockerAmmo.Add(AUTWeap_RocketLauncher::StaticClass(), -2.f);
+	WeaponLockerAmmo.Add(AUTWeap_LinkGun::StaticClass(), -2.f);
+	WeaponLockerAmmo.Add(AUTWeap_FlakCannon::StaticClass(), -2.f);
+	WeaponLockerAmmo.Add(ConstructorStaticsAmmo.Stinger.Object, -1.5f);
 }
 
 void AUTWeaponLocker::PreInitializeComponents()
@@ -335,9 +365,18 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 				}
 			}
 
-			if (Copy && Copy->PickupSound)
+			if (Copy)
 			{
-				UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
+				int32 LockerAmmo = GetLockerAmmo(LocalInventoryType);
+				if (LockerAmmo - Copy->Ammo > 0)
+				{
+					Copy->AddAmmo(LockerAmmo - Copy->Ammo);
+				}				
+
+				if (Copy->PickupSound)
+				{
+					UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
+				}
 			}
 		}
 	}
@@ -867,23 +906,24 @@ void AUTWeaponLocker::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 			return Str;
 		};
 
+		FString OptionalNewLine = NewLine;
 		TArray<FString> MessageStrs;
 		if (AutoStates.Num() > 1)
 		{
-			MessageStrs.Add(FString::Printf(TEXT("Multiple States have 'Auto' flag set:\n%s"), *JoinArray(AutoStates, FString(TEXT("\n")))));
+			MessageStrs.Add(FString::Printf(TEXT("Multiple States have 'Auto' flag set: %s%s"), *OptionalNewLine, *JoinArray(AutoStates, NewLine)));
 		}
 		if (NoNamesStates.Num() > 0)
 		{
-			MessageStrs.Add(FString::Printf(TEXT("Some States have no name:\n%s"), *JoinArray(NoNamesStates, FString(TEXT("\n")))));
+			MessageStrs.Add(FString::Printf(TEXT("Some States have no name: %s%s"), *OptionalNewLine, *JoinArray(NoNamesStates, NewLine)));
 		}
 		if (DupNamesStates.Num() > 0)
 		{
-			MessageStrs.Add(FString::Printf(TEXT("Duplicate state names found:\n%s"), *JoinArray(DupNamesStates, FString(TEXT("\n")))));
+			MessageStrs.Add(FString::Printf(TEXT("Duplicate state names found: %s%s"), *OptionalNewLine, *JoinArray(DupNamesStates, NewLine)));
 		}
 
 		if (MessageStrs.Num() > 0)
 		{
-			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(JoinArray(MessageStrs, FString(TEXT("\n\n")))));
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(JoinArray(MessageStrs, NewParagraph)));
 		}
 	}
 }
