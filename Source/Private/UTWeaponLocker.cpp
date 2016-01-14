@@ -912,7 +912,7 @@ void AUTWeaponLocker::PostEditChangeChainProperty(FPropertyChangedChainEvent& Pr
 				}
 				else if (TailPropName == GET_MEMBER_NAME_CHECKED(FStateInfo, StateName))
 				{
-					States[NewArrayIndex].bUserChanged = true;
+					States[NewArrayIndex].bUserChanged = !States[NewArrayIndex].StateName.IsNone();
 				}
 			}
 		}
