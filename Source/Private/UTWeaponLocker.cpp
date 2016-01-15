@@ -20,6 +20,14 @@
 static FString NewLine = FString(TEXT("\n"));
 static FString NewParagraph = FString(TEXT("\n\n"));
 
+FCollisionResponseParams WorldResponseParams = []()
+{
+	FCollisionResponseParams Result(ECR_Ignore);
+	Result.CollisionResponse.WorldStatic = ECR_Block;
+	Result.CollisionResponse.WorldDynamic = ECR_Block;
+	return Result;
+}();
+
 AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer
 		//.DoNotCreateDefaultSubobject(TEXT("TimerEffect")) // TimerEffect is not optional
@@ -43,7 +51,7 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	Collision->InitCapsuleSize(78.0f, 110.0f);
 	Collision->Mobility = EComponentMobility::Movable;
 	Collision->AttachParent = RootComponent;
-	Collision->OnComponentBeginOverlap.AddDynamic(this, &AUTPickup::OnOverlapBegin);
+	Collision->OnComponentBeginOverlap.AddDynamic(this, &AUTWeaponLocker::OnOverlapBegin);
 	Collision->RelativeLocation.Z = 110.f;
 
 	BaseMesh = ObjectInitializer.CreateDefaultSubobject<UStaticMeshComponent>(this, TEXT("BaseMeshComp"));
@@ -318,6 +326,16 @@ bool AUTWeaponLocker::AllowPickupBy_Implementation(APawn* Other, bool bDefaultAl
 		!((AUTCharacter*)Other)->IsRagdoll() &&
 		((AUTCharacter*)Other)->bCanPickupItems &&
 		!HasCustomer(Other);
+}
+
+void AUTWeaponLocker::OnOverlapBegin(AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepHitResult)
+{
+	APawn* P = Cast<APawn>(OtherActor);
+	FVector TraceEnd = Collision ? Collision->GetComponentLocation() : GetActorLocation();
+	if (P != NULL && !P->bTearOff && !GetWorld()->LineTraceTestByChannel(P->GetActorLocation(), TraceEnd, ECC_Pawn, FCollisionQueryParams(), WorldResponseParams))
+	{
+		ProcessTouch(P);
+	}
 }
 
 void AUTWeaponLocker::ProcessTouch_Implementation(APawn* TouchedBy)

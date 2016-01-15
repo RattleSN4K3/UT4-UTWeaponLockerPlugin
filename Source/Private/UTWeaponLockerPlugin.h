@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Engine.h"
 #include "UnrealTournament.h"
 
 #include "Runtime/Core/Public/Features/IModularFeature.h"

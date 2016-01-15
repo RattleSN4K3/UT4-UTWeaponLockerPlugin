@@ -272,6 +272,7 @@ public:
 	//Begin AUTPickup Interface
 	virtual void Reset_Implementation() override;
 	virtual bool AllowPickupBy_Implementation(APawn* Other, bool bDefaultAllowPickup) override;
+	virtual void OnOverlapBegin(AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepHitResult) override;
 	virtual void ProcessTouch_Implementation(APawn* TouchedBy) override;
 	virtual void GiveTo_Implementation(APawn* Target) override;
 	virtual void StartSleeping_Implementation() override;
