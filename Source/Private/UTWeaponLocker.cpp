@@ -359,9 +359,9 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 				Params.bNoCollisionFail = true;
 				Params.Instigator = Recipient;
 				Copy = GetWorld()->SpawnActor<AUTWeapon>(LocalInventoryType, GetActorLocation(), GetActorRotation(), Params);
-				if (Copy && Recipient->AddInventory(Copy, true))
+				if (Copy)
 				{
-					AnnouncePickup(Recipient, LocalInventoryType);
+					Recipient->AddInventory(Copy, true);
 				}
 			}
 
@@ -372,6 +372,8 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 				{
 					Copy->AddAmmo(LockerAmmo - Copy->Ammo);
 				}				
+
+				AnnouncePickup(Recipient, LocalInventoryType);
 
 				if (Copy->PickupSound)
 				{
