@@ -396,15 +396,18 @@ public:
 	UFUNCTION()
 	virtual void OnPawnDied(AController* Killer, const UDamageType* DamageType);
 
+	/** Pre-defined states */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	TArray<FStateInfo> States;
 
+	/** Returns all available states */
 	UFUNCTION(BlueprintPure, Category = State)
 	TArray<FStateInfo> GetStates()
 	{
 		return States;
 	}
 
+	/** Returns the current active state*/
 	inline UUTWeaponLockerState* GetCurrentState()
 	{
 		return CurrentState;
@@ -413,9 +416,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Pickup)
 	virtual void SetInitialState();
 
+	/**
+	* Transitions to the desired state.
+	*
+	* @param	NewState - new state to transition to
+	*/
 	UFUNCTION(BlueprintCallable, Category = Pickup)
 	virtual void GotoState(class UUTWeaponLockerState* NewState);
 
+	/**
+	* Transitions to the desired state.
+	*
+	* @param	NewState - new state to transition to
+	*/
 	UFUNCTION(BlueprintCallable, Category = Pickup)
 	virtual void GotoStateByName(FName NewStateName)
 	{
@@ -426,6 +439,10 @@ public:
 		else if (FStateInfo* NewState = States.FindByPredicate([&](const FStateInfo& StateInfo){ return StateInfo.StateName == NewStateName; }))
 		{
 			GotoState(NewState->State);
+		}
+		else
+		{
+			UE_LOG(LogDebug, Warning, TEXT("Attempt to send %s to invalid state with name of %s (unable to find state)"), *GetName(), *NewStateName.ToString());
 		}
 	}
 
@@ -468,6 +485,14 @@ public:
 		return false;
 	}
 
+	/**
+	* Returns the current state name, useful for determining current
+	* state similar to IsInState.  Note:  This *doesn't* work with
+	* inherited states, in that it will only compare at the lowest
+	* state level.
+	*
+	* @return	Name of the current state
+	*/
 	UFUNCTION(BlueprintPure, Category = Pickup)
 	virtual FName GetStateName()
 	{
@@ -573,9 +598,19 @@ class UUTWeaponLockerState : public UScriptState
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = State, meta = (BlueprintProtected))
 	void SetInitialState();
 
+	/**
+	* Called immediately when entering a state, while within the
+	* GotoState() call that caused the state change (before any
+	* state code is executed).
+	*/
 	UFUNCTION(BlueprintNativeEvent)
 	void BeginState(const UUTWeaponLockerState* PrevState);
 
+	/**
+	* Called immediately before going out of the current state, while
+	* within the GotoState() call that caused the state change, and
+	* before BeginState() is called within the new state.
+	*/
 	UFUNCTION(BlueprintNativeEvent)
 	void EndState(const UUTWeaponLockerState* NextState);
 
