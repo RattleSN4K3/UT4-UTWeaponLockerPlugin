@@ -295,6 +295,12 @@ class AUTWeaponLocker : public AUTPickup
 	UPROPERTY(BlueprintReadOnly, Category = Locker, meta = (AllowPrivateAccess = "true"))
 	TArray<FWeaponPickupCustomer> Customers;
 
+	/** whether to clear customers on reset (when the level is reset or the Locker is reset manually).
+	 * Clearing customers would allow the same players taken the weapon again on reset
+	 * (otherwise only if players die, they are able to take the weapons or wait) */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Locker)
+	bool bClearCustomersOnReset;
+
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual bool AddCustomer(APawn* P);
 	UFUNCTION(BlueprintPure, Category = Locker)

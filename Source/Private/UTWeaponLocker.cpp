@@ -77,6 +77,8 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	ProximityDistanceSquared = 1500000.0f;
 	ScaleRate = 2.f;
 
+	bClearCustomersOnReset = true;
+
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
 	
 	FStateInfo PickupStateInfo(UUTWeaponLockerStatePickup::StaticClass(), true);
@@ -276,7 +278,11 @@ void AUTWeaponLocker::Reset_Implementation()
 		GotoState(PickupState);
 	}
 
-	// TODO: Clear customers
+	if (bClearCustomersOnReset)
+	{
+		// clear customers, so players are able to pick up weapons again on reset
+		Customers.Empty();
+	}
 }
 
 bool AUTWeaponLocker::AllowPickupBy_Implementation(APawn* Other, bool bDefaultAllowPickup)
