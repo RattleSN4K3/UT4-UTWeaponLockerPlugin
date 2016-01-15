@@ -409,7 +409,7 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 
 				if (Copy->PickupSound)
 				{
-					UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_IfSourceNotReplicated, false, FVector::ZeroVector, NULL, Recipient, false);
+					UUTGameplayStatics::UTPlaySound(GetWorld(), Copy->PickupSound, this, SRT_All, false, FVector::ZeroVector, NULL, Recipient, false);
 				}
 			}
 		}
