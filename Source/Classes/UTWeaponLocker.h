@@ -86,16 +86,41 @@ struct FWeaponEntry
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Pickup)
 	TSubclassOf<AUTWeapon> WeaponClass;
 
+	FWeaponEntry() : WeaponClass(NULL) {}
+	FWeaponEntry(TSubclassOf<AUTWeapon> InWeaponClass) : WeaponClass(InWeaponClass) {}
+
+	bool operator ==(const FWeaponEntry& Other) const
+	{
+		return WeaponClass == Other.WeaponClass;
+	}
+
+	bool operator !=(const FWeaponEntry& Other) const
+	{
+		return !(*this == Other);
+	}
+};
+
+USTRUCT(BlueprintType)
+struct FWeaponInfo
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(BlueprintReadonly, Category = Pickup)
+	TSubclassOf<AUTWeapon> WeaponClass;
+	
 	UPROPERTY(BlueprintReadonly, Category = Pickup)
 	UMeshComponent* PickupMesh;
 
 	UPROPERTY(BlueprintReadonly, Category = Pickup)
 	FVector DesiredScale3D;
 
-	FWeaponEntry()
+	FWeaponInfo()
+		: FWeaponInfo(NULL)
 	{}
-	FWeaponEntry(TSubclassOf<AUTWeapon> InWeaponClass)
+	FWeaponInfo(TSubclassOf<AUTWeapon> InWeaponClass)
 		: WeaponClass(InWeaponClass)
+		, PickupMesh(NULL)
+		, DesiredScale3D(FVector::ZeroVector)
 	{}
 };
 
@@ -159,17 +184,32 @@ class AUTWeaponLocker : public AUTPickup
 		return 0;
 	}
 
+protected:
+
 	/** base mesh */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Base")
 	UStaticMeshComponent* BaseMesh;
 
-	UStaticMeshComponent* GetBaseMesh() const { return BaseMesh; }
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Locker)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, ReplicatedUsing = OnRep_Weapons, Category = Locker, meta = (BlueprintProtected, AllowPrivateAccess = "true", ExposeOnSpawn = true))
 	TArray<FWeaponEntry> Weapons;
+	UPROPERTY()
+	TArray<FWeaponEntry> WeaponsCopy;
+
+	UPROPERTY(BlueprintReadOnly, Category = Locker, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	TArray<FWeaponInfo> LockerWeapons;
 
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_ReplacementWeapons)
 	FReplacementWeaponEntry ReplacementWeapons[6];
+
+public:
+
+	UFUNCTION(BlueprintPure, Category = Locker)
+	TArray<FWeaponEntry> GetWeapons() const { return Weapons; }
+
+	UStaticMeshComponent* GetBaseMesh() const { return BaseMesh; }
+
+	UFUNCTION(BlueprintNativeEvent, Category = Locker)
+	void OnRep_Weapons();
 
 	UFUNCTION()
 	virtual void OnRep_ReplacementWeapons();
@@ -315,7 +355,11 @@ class AUTWeaponLocker : public AUTPickup
 	virtual void ShowHidden();
 
 	/** replaces an entry in the Weapons array (generally used by mutators) */
-	UFUNCTION(BlueprintCallable, Category = Locker)
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker)
+	virtual void AddWeapon(TSubclassOf<AUTWeapon> NewWeaponClass);
+
+	/** replaces an entry in the Weapons array (generally used by mutators) */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker)
 	virtual void ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeaponClass);
 
 	/** In sleeping state */

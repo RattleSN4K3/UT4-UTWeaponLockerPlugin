@@ -172,6 +172,8 @@ void AUTWeaponLocker::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 	ReceivePreBeginPlay();
+
+	WeaponsCopy = Weapons;
 }
 
 void AUTWeaponLocker::BeginPlay()
@@ -194,6 +196,7 @@ void AUTWeaponLocker::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>
 	DOREPLIFETIME(AUTWeaponLocker, LockerRespawnTime);
 	DOREPLIFETIME(AUTWeaponLocker, bIsSleeping);
 	DOREPLIFETIME(AUTWeaponLocker, bIsDisabled);
+	DOREPLIFETIME_CONDITION(AUTWeaponLocker, Weapons, COND_None);
 	DOREPLIFETIME_CONDITION(AUTWeaponLocker, ReplacementWeapons, COND_InitialOnly);
 }
 
@@ -219,23 +222,45 @@ void AUTWeaponLocker::InitializeWeapons_Implementation()
 		}
 	}
 
+	if (LockerWeapons.Num() > 0)
+	{
+		DestroyWeapons();
+		LockerWeapons.Empty();
+	}
+
 	// initialize weapons
 	MaxDesireability = 0.f;
 	for (int32 i = 0; i < Weapons.Num(); i++)
 	{
+		// add desirability
 		MaxDesireability += Weapons[i].WeaponClass.GetDefaultObject()->BaseAISelectRating;
+
+		// create local weapon info object
+		LockerWeapons.Add(FWeaponInfo(Weapons[i].WeaponClass));
 	}
+
+	// force locker to re-create weapon meshes
+	bPlayerNearby = false;
 }
 
 void AUTWeaponLocker::DestroyWeapons_Implementation()
 {
-	for (int32 i = 0; i < Weapons.Num(); i++)
+	for (int32 i = 0; i < LockerWeapons.Num(); i++)
 	{
-		if (Weapons[i].PickupMesh != NULL)
+		if (LockerWeapons[i].PickupMesh != NULL)
 		{
-			UnregisterComponentTree(Weapons[i].PickupMesh);
-			Weapons[i].PickupMesh = NULL;
+			UnregisterComponentTree(LockerWeapons[i].PickupMesh);
+			LockerWeapons[i].PickupMesh = NULL;
 		}
+	}
+}
+
+void AUTWeaponLocker::OnRep_Weapons_Implementation()
+{
+	if (Weapons != WeaponsCopy)
+	{
+		WeaponsCopy = Weapons;
+		InitializeWeapons();
 	}
 }
 
@@ -250,10 +275,11 @@ void AUTWeaponLocker::OnRep_ReplacementWeapons()
 				Weapons.SetNum(i + 1);
 			}
 			Weapons[i].WeaponClass = ReplacementWeapons[i].WeaponClass;
-			if (Weapons[i].PickupMesh != NULL)
+
+			if (LockerWeapons.IsValidIndex(i) && LockerWeapons[i].PickupMesh != NULL)
 			{
-				UnregisterComponentTree(Weapons[i].PickupMesh);
-				Weapons[i].PickupMesh = NULL;
+				UnregisterComponentTree(LockerWeapons[i].PickupMesh);
+				LockerWeapons[i].PickupMesh = NULL;
 			}
 		}
 	}
@@ -462,38 +488,38 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 		{
 			bScalingUp = true;
 			CurrentWeaponScaleX = 0.1f;
-			for (int32 i = 0; i < Weapons.Num(); i++)
+			for (int32 i = 0; i < LockerWeapons.Num(); i++)
 			{
-				if (Weapons[i].PickupMesh == NULL)
+				if (LockerWeapons[i].PickupMesh == NULL)
 				{
 					const FRotator RotationOffset = WeaponLockerRotation;
-					AUTPickupInventory::CreatePickupMesh(this, Weapons[i].PickupMesh, Weapons[i].WeaponClass, LockerFloatHeight, RotationOffset, false);
-					if (Weapons[i].PickupMesh != NULL)
+					AUTPickupInventory::CreatePickupMesh(this, LockerWeapons[i].PickupMesh, LockerWeapons[i].WeaponClass, LockerFloatHeight, RotationOffset, false);
+					if (LockerWeapons[i].PickupMesh != NULL)
 					{
-						Weapons[i].PickupMesh->SetRelativeLocation(LockerPositions[i] + WeaponLockerOffset);
+						LockerWeapons[i].PickupMesh->SetRelativeLocation(LockerPositions[i] + WeaponLockerOffset);
 						if (!WeaponLockerScale3D.IsZero())
 						{
-							Weapons[i].PickupMesh->SetRelativeScale3D(Weapons[i].PickupMesh->RelativeScale3D * WeaponLockerScale3D);
+							LockerWeapons[i].PickupMesh->SetRelativeScale3D(LockerWeapons[i].PickupMesh->RelativeScale3D * WeaponLockerScale3D);
 						}
 
-						FVector NewScale = Weapons[i].PickupMesh->GetComponentScale();
+						FVector NewScale = LockerWeapons[i].PickupMesh->GetComponentScale();
 						if (ScaleRate > 0.f)
 						{
-							Weapons[i].DesiredScale3D = NewScale;
+							LockerWeapons[i].DesiredScale3D = NewScale;
 							NewScale.X *= 0.1;
 							NewScale.Z *= 0.1;
 
-							Weapons[i].PickupMesh->SetWorldScale3D(NewScale);
+							LockerWeapons[i].PickupMesh->SetWorldScale3D(NewScale);
 						}
 					}
 				}
-				if (Weapons[i].PickupMesh != NULL)
+				if (LockerWeapons[i].PickupMesh != NULL)
 				{
-					Weapons[i].PickupMesh->SetHiddenInGame(false);
+					LockerWeapons[i].PickupMesh->SetHiddenInGame(false);
 
 					if (bPlayEffects)
 					{
-						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, Weapons[i].PickupMesh->GetComponentLocation());
+						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, LockerWeapons[i].PickupMesh->GetComponentLocation());
 					}
 				}
 			}
@@ -508,14 +534,14 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 			AUTWorldSettings* WS = Cast<AUTWorldSettings>(GetWorld()->GetWorldSettings());
 			bPlayEffects = bPlayEffects && (WS == NULL || WS->EffectIsRelevant(this, GetActorLocation(), true, true, 10000.f, 0.f));
 			bScalingUp = false;
-			for (int32 i = 0; i < Weapons.Num(); i++)
+			for (int32 i = 0; i < LockerWeapons.Num(); i++)
 			{
-				if (Weapons[i].PickupMesh != NULL)
+				if (LockerWeapons[i].PickupMesh != NULL)
 				{
-					Weapons[i].PickupMesh->SetHiddenInGame(true);
+					LockerWeapons[i].PickupMesh->SetHiddenInGame(true);
 					if (bPlayEffects)
 					{
-						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, Weapons[i].PickupMesh->GetComponentLocation());
+						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, LockerWeapons[i].PickupMesh->GetComponentLocation());
 					}
 				}
 			}
@@ -576,8 +602,22 @@ bool AUTWeaponLocker::HasCustomer(APawn* TestPawn)
 	return false;
 }
 
+void AUTWeaponLocker::AddWeapon(TSubclassOf<AUTWeapon> NewWeaponClass)
+{
+	if (Role < ROLE_Authority)
+		return;
+
+	FWeaponEntry NewWeaponEntry(NewWeaponClass);
+	Weapons.Add(NewWeaponEntry);
+
+	InitializeWeapons();
+}
+
 void AUTWeaponLocker::ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeaponClass)
 {
+	if (Role < ROLE_Authority)
+		return;
+
 	if (Index >= 0)
 	{
 		if (Index >= Weapons.Num())
@@ -589,6 +629,12 @@ void AUTWeaponLocker::ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeapo
 		{
 			ReplacementWeapons[Index].bReplaced = true;
 			ReplacementWeapons[Index].WeaponClass = NewWeaponClass;
+		}
+
+		// update weapons locally
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			OnRep_ReplacementWeapons();
 		}
 	}
 }
@@ -1169,13 +1215,13 @@ void UUTWeaponLockerStatePickup::Tick_Implementation(float DeltaTime)
 				WL->bScalingUp = false;
 			}
 
-			for (int32 i = 0; i < WL->Weapons.Num(); i++)
+			for (int32 i = 0; i < WL->LockerWeapons.Num(); i++)
 			{
-				if (WL->Weapons[i].PickupMesh != NULL)
+				if (WL->LockerWeapons[i].PickupMesh != NULL)
 				{
-					FVector NewScale = WL->Weapons[i].DesiredScale3D * WL->CurrentWeaponScaleX;
-					NewScale.Y = WL->Weapons[i].DesiredScale3D.Y;
-					WL->Weapons[i].PickupMesh->SetWorldScale3D(NewScale);
+					FVector NewScale = WL->LockerWeapons[i].DesiredScale3D * WL->CurrentWeaponScaleX;
+					NewScale.Y = WL->LockerWeapons[i].DesiredScale3D.Y;
+					WL->LockerWeapons[i].PickupMesh->SetWorldScale3D(NewScale);
 				}
 			}
 		}
