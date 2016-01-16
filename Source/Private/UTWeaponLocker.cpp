@@ -218,6 +218,19 @@ void AUTWeaponLocker::Tick(float DeltaTime)
 	}
 }
 
+void AUTWeaponLocker::PostActorCreated()
+{
+	Super::PostActorCreated();
+
+	// no need load the editor mesh when there is no editor, meshes are created dynamically in Tick
+#if WITH_EDITOR
+	if (!IsRunningCommandlet())
+	{
+		CreateEditorPickupMeshes();
+	}
+#endif
+}
+
 void AUTWeaponLocker::InitializeWeapons_Implementation()
 {
 	// clear out null entries
@@ -259,6 +272,23 @@ void AUTWeaponLocker::DestroyWeapons_Implementation()
 		{
 			UnregisterComponentTree(LockerWeapons[i].PickupMesh);
 			LockerWeapons[i].PickupMesh = NULL;
+		}
+	}
+}
+
+void AUTWeaponLocker::CreatePickupMeshForSlot(UMeshComponent*& PickupMesh, int32 SlotIndex, TSubclassOf<AUTInventory> PickupInventoryType)
+{
+	if (LockerPositions.IsValidIndex(SlotIndex))
+	{
+		const FRotator RotationOffset = WeaponLockerRotation;
+		AUTPickupInventory::CreatePickupMesh(this, PickupMesh, PickupInventoryType, LockerFloatHeight, RotationOffset, false);
+		if (PickupMesh != NULL)
+		{
+			PickupMesh->SetRelativeLocation(LockerPositions[SlotIndex] + WeaponLockerOffset);
+			if (!WeaponLockerScale3D.IsZero())
+			{
+				PickupMesh->SetRelativeScale3D(PickupMesh->RelativeScale3D * WeaponLockerScale3D);
+			}
 		}
 	}
 }
@@ -510,16 +540,9 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 			{
 				if (LockerWeapons[i].PickupMesh == NULL)
 				{
-					const FRotator RotationOffset = WeaponLockerRotation;
-					AUTPickupInventory::CreatePickupMesh(this, LockerWeapons[i].PickupMesh, LockerWeapons[i].WeaponClass, LockerFloatHeight, RotationOffset, false);
+					CreatePickupMeshForSlot(LockerWeapons[i].PickupMesh, i, LockerWeapons[i].WeaponClass);
 					if (LockerWeapons[i].PickupMesh != NULL)
 					{
-						LockerWeapons[i].PickupMesh->SetRelativeLocation(LockerPositions[i] + WeaponLockerOffset);
-						if (!WeaponLockerScale3D.IsZero())
-						{
-							LockerWeapons[i].PickupMesh->SetRelativeScale3D(LockerWeapons[i].PickupMesh->RelativeScale3D * WeaponLockerScale3D);
-						}
-
 						FVector NewScale = LockerWeapons[i].PickupMesh->GetComponentScale();
 						if (ScaleRate > 0.f)
 						{
@@ -854,6 +877,37 @@ float AUTWeaponLocker::DetourWeight_Implementation(APawn* Asker, float PathDista
 
 #if WITH_EDITOR
 
+void AUTWeaponLocker::CreateEditorPickupMeshes()
+{
+	if (GetWorld() != NULL && GetWorld()->WorldType == EWorldType::Editor)
+	{
+		for (auto& EditorMesh : EditorMeshes)
+		{
+			if (EditorMesh)
+			{
+				UnregisterComponentTree(EditorMesh);
+				EditorMesh->DestroyComponent();
+				EditorMesh = NULL;
+			}
+		}
+
+		EditorMeshes.Empty();
+
+		for (int32 i = 0; i < Weapons.Num() && i < LockerPositions.Num(); i++)
+		{
+			EditorMeshes.AddZeroed(1);
+			if (Weapons[i].WeaponClass != NULL)
+			{
+				CreatePickupMeshForSlot(EditorMeshes[i], i, Weapons[i].WeaponClass);
+				if (EditorMeshes[i] != NULL)
+				{
+					EditorMeshes[i]->SetHiddenInGame(true);
+				}
+			}
+		}
+	}
+}
+
 void AUTWeaponLocker::CheckForErrors()
 {
 	Super::CheckForErrors();
@@ -997,6 +1051,10 @@ void AUTWeaponLocker::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		{
 			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(JoinArray(MessageStrs, NewParagraph)));
 		}
+	}
+	else if (MemberName == GET_MEMBER_NAME_CHECKED(AUTWeaponLocker, Weapons))
+	{
+		CreateEditorPickupMeshes();
 	}
 }
 

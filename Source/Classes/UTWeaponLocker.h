@@ -201,12 +201,19 @@ protected:
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_ReplacementWeapons)
 	FReplacementWeaponEntry ReplacementWeapons[6];
 
+#if WITH_EDITORONLY_DATA
+	UPROPERTY(Transient)
+	TArray<UMeshComponent*> EditorMeshes;
+#endif
+
 public:
 
 	UFUNCTION(BlueprintPure, Category = Locker)
 	TArray<FWeaponEntry> GetWeapons() const { return Weapons; }
 
 	UStaticMeshComponent* GetBaseMesh() const { return BaseMesh; }
+
+	void CreatePickupMeshForSlot(UMeshComponent*& PickupMesh, int32 SlotIndex, TSubclassOf<AUTInventory> PickupInventoryType);
 
 	UFUNCTION(BlueprintNativeEvent, Category = Locker)
 	void OnRep_Weapons();
@@ -267,6 +274,8 @@ public:
 	virtual void PreInitializeComponents() override;
 	virtual void PostInitializeComponents() override;
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void PostActorCreated() override;
 	//End AActor Interface
 
 	//Begin AUTPickup Interface
@@ -571,7 +580,10 @@ public:
 	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 
 	virtual bool HasStateErrors(TArray<FString>& StateErrors);
-protected:
+
+	/** create transient pickup mesh for editor previewing */
+	virtual void CreateEditorPickupMeshes();
+
 #endif // WITH_EDITOR
 
 };
