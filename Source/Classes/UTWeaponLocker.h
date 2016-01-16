@@ -374,8 +374,8 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsDisabled, Category = Locker)
 	uint32 bIsDisabled : 1;
 
-	UFUNCTION()
-	virtual void OnRep_IsDisabled();
+	UFUNCTION(BlueprintNativeEvent)
+	void OnRep_IsDisabled();
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void DisablePickup()
@@ -396,6 +396,9 @@ public:
 
 	UFUNCTION()
 	virtual void OnPawnDied(AController* Killer, const UDamageType* DamageType);
+
+	UPROPERTY(BlueprintReadOnly, Category = "State")
+	UUTWeaponLockerState* GlobalState;
 
 	/** Pre-defined states */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = State, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
@@ -524,9 +527,6 @@ protected:
 	UUTWeaponLockerState* InitialState;
 
 	UUTWeaponLockerState* AutoState;
-
-	UPROPERTY(Instanced, NoClear, EditDefaultsOnly, BlueprintReadOnly, Category = "State")
-	UUTWeaponLockerState* GlobalState;
 
 	UPROPERTY(BlueprintReadWrite, Category = "State", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	UUTWeaponLockerState* PickupState;

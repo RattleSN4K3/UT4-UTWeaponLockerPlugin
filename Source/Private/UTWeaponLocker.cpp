@@ -295,7 +295,7 @@ void AUTWeaponLocker::OnRep_ReplacementWeapons()
 	InitializeWeapons();
 }
 
-void AUTWeaponLocker::OnRep_IsDisabled()
+void AUTWeaponLocker::OnRep_IsDisabled_Implementation()
 {
 	SetInitialStateGlobal();
 }
