@@ -285,10 +285,12 @@ void AUTWeaponLocker::CreatePickupMeshForSlot(UMeshComponent*& PickupMesh, int32
 	if (LockerPositions.IsValidIndex(SlotIndex))
 	{
 		const FRotator RotationOffset = WeaponLockerRotation;
-		AUTPickupInventory::CreatePickupMesh(this, PickupMesh, PickupInventoryType, LockerFloatHeight, RotationOffset, false);
+		AUTPickupInventory::CreatePickupMesh(this, PickupMesh, PickupInventoryType, 0.f, RotationOffset, false);
 		if (PickupMesh != NULL)
 		{
-			PickupMesh->SetRelativeLocation(LockerPositions[SlotIndex] + WeaponLockerOffset);
+			FVector LocationOffset(LockerPositions[SlotIndex] + WeaponLockerOffset);
+			LocationOffset += FVector(0.f, 0.f, LockerFloatHeight);
+			PickupMesh->SetRelativeLocation(LocationOffset);
 			if (!WeaponLockerScale3D.IsZero())
 			{
 				PickupMesh->SetRelativeScale3D(PickupMesh->RelativeScale3D * WeaponLockerScale3D);

@@ -229,6 +229,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	float LockerFloatHeight;
 
+	// TODO: Move to UTWeapon
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	FVector WeaponLockerOffset;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
