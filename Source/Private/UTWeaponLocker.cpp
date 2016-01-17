@@ -174,6 +174,10 @@ void AUTWeaponLocker::PreInitializeComponents()
 	{
 		InitialState = GlobalState;
 	}
+
+#if WITH_EDITOR
+	CreateEditorPickupMeshes();
+#endif
 }
 
 void AUTWeaponLocker::PostInitializeComponents()
@@ -876,6 +880,12 @@ float AUTWeaponLocker::DetourWeight_Implementation(APawn* Asker, float PathDista
 }
 
 #if WITH_EDITOR
+
+void AUTWeaponLocker::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	CreateEditorPickupMeshes();
+}
 
 void AUTWeaponLocker::CreateEditorPickupMeshes()
 {

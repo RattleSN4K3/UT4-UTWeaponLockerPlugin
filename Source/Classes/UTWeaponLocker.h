@@ -582,6 +582,7 @@ public:
 	virtual bool HasStateErrors(TArray<FString>& StateErrors);
 
 	/** create transient pickup mesh for editor previewing */
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void CreateEditorPickupMeshes();
 
 #endif // WITH_EDITOR
