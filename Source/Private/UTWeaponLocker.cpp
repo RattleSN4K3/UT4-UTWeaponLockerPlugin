@@ -526,6 +526,7 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 				if (Copy)
 				{
 					Recipient->AddInventory(Copy, true);
+					bWeaponAdded = true;
 				}
 			}
 
