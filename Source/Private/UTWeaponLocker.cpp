@@ -86,9 +86,6 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	ScaleRate = 2.f;
 
 	bClearCustomersOnReset = true;
-	
-	// runtime vars initialisation
-	bForceNearbyPlayers = false;
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
 	
@@ -141,6 +138,20 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	WeaponLockerAmmo.Add(AUTWeap_LinkGun::StaticClass(), -2.f);
 	WeaponLockerAmmo.Add(AUTWeap_FlakCannon::StaticClass(), -2.f);
 	WeaponLockerAmmo.Add(ConstructorStaticsAmmo.Stinger.Object, -1.5f);
+
+	// runtime vars initialisation
+	MaxDesireability = 0.f;
+
+	bIsActive = false;
+	bIsDisabled = false;
+	bIsSleeping = false;
+
+	bScalingUp = false;
+	CurrentWeaponScaleX = 0.f;
+
+	bPlayerNearby = false;
+	bForceNearbyPlayers = false;
+	NextProximityCheckTime = 0.f;
 }
 
 void AUTWeaponLocker::PreInitializeComponents()

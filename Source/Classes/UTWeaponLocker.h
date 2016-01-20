@@ -122,6 +122,16 @@ struct FWeaponInfo
 		, PickupMesh(NULL)
 		, DesiredScale3D(FVector::ZeroVector)
 	{}
+
+	bool operator ==(const FWeaponInfo& Other) const
+	{
+		return WeaponClass == Other.WeaponClass;
+	}
+
+	bool operator !=(const FWeaponInfo& Other) const
+	{
+		return !(*this == Other);
+	}
 };
 
 /** when received on the client, replaces Weapons array classes with this array instead */
@@ -133,9 +143,23 @@ struct FReplacementWeaponEntry
 	/** indicates whether this entry in the Weapons array was actually replaced
 	* (so we can distinguish between WeaponClass == None because it wasn't touched vs. because it was removed
 	*/
-	uint32 bReplaced : 1;
+	bool bReplaced;
 	/** the class of weapon to replace with */
 	TSubclassOf<AUTWeapon> WeaponClass;
+
+	FReplacementWeaponEntry()
+		: WeaponClass(NULL), bReplaced(false)
+	{}
+
+	bool operator ==(const FReplacementWeaponEntry& Other) const
+	{
+		return WeaponClass == Other.WeaponClass;
+	}
+
+	bool operator !=(const FReplacementWeaponEntry& Other) const
+	{
+		return !(*this == Other);
+	}
 };
 
 UCLASS(Blueprintable, meta = (ChildCanTick))
@@ -316,15 +340,15 @@ public:
 
 	/** clientside flag - whether the locker should be displayed as active and having weapons available */
 	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
-	uint32 bIsActive : 1;
+	bool bIsActive;
 
 	/** clientside flag - whether or not a local player is near this locker */
 	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
-	uint32 bPlayerNearby : 1;
+	bool bPlayerNearby;
 
 	/** whether weapons are currently scaling up */
 	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
-	uint32 bScalingUp : 1;
+	bool bScalingUp;
 
 	/** current scaling up weapon scale */
 	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
@@ -378,14 +402,14 @@ public:
 
 	/** In sleeping state */
 	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsSleeping, Category = Locker)
-	uint32 bIsSleeping : 1;
+	bool bIsSleeping;
 
 	UFUNCTION(BlueprintImplementableEvent)
 	virtual void OnRep_IsSleeping();
 
 	/** In disabled state */
 	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsDisabled, Category = Locker)
-	uint32 bIsDisabled : 1;
+	bool bIsDisabled;
 
 	UFUNCTION(BlueprintNativeEvent)
 	void OnRep_IsDisabled();
