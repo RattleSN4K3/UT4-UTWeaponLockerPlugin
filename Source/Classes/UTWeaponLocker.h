@@ -342,6 +342,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category = "Locker|Display")
 	float NextProximityCheckTime;
 
+	UPROPERTY(BlueprintReadWrite, Category = "Locker|Client", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	bool bForceNearbyPlayers;
+
 	/** list of characters that have picked up weapons from this locker recently */
 	UPROPERTY(BlueprintReadOnly, Category = Locker, meta = (AllowPrivateAccess = "true"))
 	TArray<FWeaponPickupCustomer> Customers;
@@ -358,7 +361,7 @@ public:
 	virtual bool HasCustomer(APawn* P);
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
-	virtual void SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects);
+	virtual void SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects, bool bForce = false);
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ShowActive();
@@ -399,6 +402,18 @@ public:
 	{
 		bIsDisabled = false;
 		SetInitialStateGlobal();
+	}
+
+	/** checks for anyone touching the pickup and checks if they should get the item
+	* this is necessary because this type of pickup doesn't toggle collision when weapon stay is on
+	*/
+	virtual void CheckTouching();
+	/** Pickup was touched through a wall.  Check to see if touching pawn is no longer obstructed */
+	virtual void RecheckValidTouch();
+
+	virtual FTimerHandle* GetCheckTouchingHandle()
+	{
+		return &CheckTouchingHandle;
 	}
 
 	virtual void RegisterLocalPlayer(AController* C);
@@ -573,6 +588,8 @@ protected:
 
 	FTimerHandle HideWeaponsHandle;
 	FTimerHandle DestroyWeaponsHandle;
+	FTimerHandle RecheckValidTouchHandle;
+	FTimerHandle CheckTouchingHandle;
 
 #if WITH_EDITOR
 public:

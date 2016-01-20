@@ -86,6 +86,9 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	ScaleRate = 2.f;
 
 	bClearCustomersOnReset = true;
+	
+	// runtime vars initialisation
+	bForceNearbyPlayers = false;
 
 	GlobalState = ObjectInitializer.CreateDefaultSubobject<UUTWeaponLockerState>(this, TEXT("StateGlobal"));
 	
@@ -270,6 +273,7 @@ void AUTWeaponLocker::InitializeWeapons_Implementation()
 
 void AUTWeaponLocker::DestroyWeapons_Implementation()
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::DestroyWeapons"), *GetName());
 	for (int32 i = 0; i < LockerWeapons.Num(); i++)
 	{
 		if (LockerWeapons[i].PickupMesh != NULL)
@@ -367,25 +371,87 @@ bool AUTWeaponLocker::AllowPickupBy_Implementation(APawn* Other, bool bDefaultAl
 void AUTWeaponLocker::OnOverlapBegin(AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepHitResult)
 {
 	APawn* P = Cast<APawn>(OtherActor);
-	FVector TraceEnd = Collision ? Collision->GetComponentLocation() : GetActorLocation();
-	if (P != NULL && !P->bTearOff && !GetWorld()->LineTraceTestByChannel(P->GetActorLocation(), TraceEnd, ECC_Pawn, FCollisionQueryParams(), WorldResponseParams))
+	if (P == NULL || P->bTearOff || !AllowPickupBy(P, true))
 	{
-		ProcessTouch(P);
+		return;
 	}
+	else if (P->Controller == NULL)
+	{
+		// re-check later in case this Pawn is in the middle of spawning, exiting a vehicle, etc
+		// and will have a Controller shortly
+		GetWorldTimerManager().SetTimer(RecheckValidTouchHandle, this, &AUTWeaponLocker::RecheckValidTouch, 0.2f, false);
+		return;
+	}
+	else
+	{
+		// make sure not touching through wall
+		FVector TraceEnd = Collision ? Collision->GetComponentLocation() : GetActorLocation();
+		if (GetWorld()->LineTraceTestByChannel(P->GetActorLocation(), TraceEnd, ECC_Pawn, FCollisionQueryParams(), WorldResponseParams))
+		{
+			GetWorldTimerManager().SetTimer(RecheckValidTouchHandle, this, &AUTWeaponLocker::RecheckValidTouch, 0.5f, false);
+			return;
+		}
+	}
+
+	GetWorldTimerManager().ClearTimer(RecheckValidTouchHandle);
+	ProcessTouch(P);
 }
 
 void AUTWeaponLocker::ProcessTouch_Implementation(APawn* TouchedBy)
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::ProcessTouch - TouchedBy: %s"), *GetName(), *GetNameSafe(TouchedBy));
 	if (CurrentState && CurrentState->OverrideProcessTouch(TouchedBy))
 	{
+		UE_LOG(LogDebug, Verbose, TEXT("%s::ProcessTouch - Overriden"), *GetName());
 		return;
 	}
 
 	Super::ProcessTouch_Implementation(TouchedBy);
 }
 
+void AUTWeaponLocker::CheckTouching()
+{
+	UE_LOG(LogDebug, Verbose, TEXT("%s::CheckTouching"), *GetName());
+
+	bForceNearbyPlayers = true;
+	GetWorldTimerManager().ClearTimer(CheckTouchingHandle);
+
+	TArray<AActor*> Touching;
+	GetOverlappingActors(Touching, APawn::StaticClass());
+	FHitResult UnusedHitResult;
+	for (AActor* TouchingActor : Touching)
+	{
+		APawn* P = Cast<APawn>(TouchingActor);
+		if (P != NULL && P->GetMovementComponent() != NULL)
+		{
+			FHitResult UnusedHitResult;
+			OnOverlapBegin(P, Cast<UPrimitiveComponent>(P->GetMovementComponent()->UpdatedComponent), INDEX_NONE, false, UnusedHitResult);
+		}
+	}
+
+	bForceNearbyPlayers = false;
+
+	// see if we should reset the timer
+	float NextCheckInterval = 0.0f;
+	for (const auto& PrevCustomer : Customers)
+	{
+		NextCheckInterval = FMath::Max<float>(NextCheckInterval, PrevCustomer.NextPickupTime - GetWorld()->TimeSeconds);
+	}
+	if (NextCheckInterval > 0.0f)
+	{
+		GetWorldTimerManager().SetTimer(CheckTouchingHandle, this, &AUTWeaponLocker::CheckTouching, NextCheckInterval, false);
+	}
+}
+
+void AUTWeaponLocker::RecheckValidTouch()
+{
+	UE_LOG(LogDebug, Verbose, TEXT("%s::RecheckValidTouch"), *GetName());
+	CheckTouching();
+}
+
 void AUTWeaponLocker::GiveTo_Implementation(APawn* Target)
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveTo - Target: %s"), *GetName(), *GetNameSafe(Target));
 	GiveLockerWeapons(Target, true);
 }
 
@@ -399,6 +465,7 @@ void AUTWeaponLocker::AnnouncePickup(AUTCharacter* P, TSubclassOf<AUTInventory> 
 
 void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
 	if (CurrentState)
 	{
 		CurrentState->GiveLockerWeapons(Other, bHideWeapons);
@@ -407,21 +474,32 @@ void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
 
 void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons)
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
 	AUTCharacter* Recipient = Cast<AUTCharacter>(Other);
 	if (Recipient == NULL)
 		return;
+
+	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("ENetRole"), true);
+	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Role: %s"), *GetName(), EnumPtr ? *EnumPtr->GetDisplayNameText(Role.GetValue()).ToString() : *FString(TEXT("")));
 
 	APawn* DriverPawn = Recipient->DrivenVehicle ? Recipient->DrivenVehicle : Recipient;
 	if (DriverPawn && DriverPawn->IsLocallyControlled())
 	{
 		if (bHideWeapons && bIsActive)
 		{
+			UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Register player %s and start timer ShowActive in %i"), *GetName(), *GetNameSafe(DriverPawn->GetController()), LockerRespawnTime);
+
 			// register local player by bind to the Died event in order
 			// to track when the local player dies... to reset the locker
 			RegisterLocalPlayer(DriverPawn->GetController());
 
 			ShowHidden();
 			GetWorldTimerManager().SetTimer(HideWeaponsHandle, this, &AUTWeaponLocker::ShowActive, LockerRespawnTime, false);
+		}
+		else
+		{
+			UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Clear timer ShowActive"), *GetName());
+			GetWorldTimerManager().ClearTimer(HideWeaponsHandle);
 		}
 	}
 
@@ -525,12 +603,14 @@ void UUTWeaponLockerStatePickup::NotifyLocalPlayerDead_Implementation(APlayerCon
 // Note: This is only in LockerPickup state
 void UUTWeaponLockerStatePickup::GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons)
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons (Pickup) - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
 	GetOuterAUTWeaponLocker()->GiveLockerWeaponsInternal(Other, bHideWeapons);
 }
 
-void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects)
+void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects, bool bForce/* = false*/)
 {
-	if (bNewPlayerNearby != bPlayerNearby)
+	UE_LOG(LogDebug, Verbose, TEXT("%s::SetPlayerNearby - PC: %s - bNewPlayerNearby: %i - bPlayEffects: %i - bForce: %i"), *GetName(), *GetNameSafe(PC), (int)bNewPlayerNearby, (int)bPlayEffects, (int)bForce);
+	if (bNewPlayerNearby != bPlayerNearby || bForce)
 	{
 		bPlayerNearby = bNewPlayerNearby;
 		if (GetNetMode() == NM_DedicatedServer)
@@ -540,6 +620,7 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 
 		if (bPlayerNearby)
 		{
+			UE_LOG(LogDebug, Verbose, TEXT("%s::SetPlayerNearby - Show weapons"), *GetName());
 			bScalingUp = true;
 			CurrentWeaponScaleX = 0.1f;
 			for (int32 i = 0; i < LockerWeapons.Num(); i++)
@@ -578,6 +659,7 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 		}
 		else
 		{
+			UE_LOG(LogDebug, Verbose, TEXT("%s::SetPlayerNearby - Hide weapons"), *GetName());
 			AUTWorldSettings* WS = Cast<AUTWorldSettings>(GetWorld()->GetWorldSettings());
 			bPlayEffects = bPlayEffects && (WS == NULL || WS->EffectIsRelevant(this, GetActorLocation(), true, true, 10000.f, 0.f));
 			bScalingUp = false;
@@ -688,6 +770,7 @@ void AUTWeaponLocker::ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeapo
 
 void AUTWeaponLocker::StartSleeping_Implementation()
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::StartSleeping"), *GetName());
 	// override original sleeping mechanism
 
 	if (CurrentState)
@@ -698,6 +781,7 @@ void AUTWeaponLocker::StartSleeping_Implementation()
 
 void AUTWeaponLocker::ShowActive()
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::ShowActive"), *GetName());
 	if (CurrentState)
 	{
 		CurrentState->ShowActive();
@@ -707,16 +791,24 @@ void AUTWeaponLocker::ShowActive()
 // Note: This is only in LockerPickup state
 void UUTWeaponLockerStatePickup::ShowActive_Implementation()
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::ShowActive (Pickup)"), *GetName());
 	GetOuterAUTWeaponLocker()->bIsActive = true;
 	GetOuterAUTWeaponLocker()->NextProximityCheckTime = 0.f;
 	if (GetOuterAUTWeaponLocker()->AmbientEffect)
 	{
 		GetOuterAUTWeaponLocker()->AmbientEffect->SetTemplate(GetOuterAUTWeaponLocker()->ActiveEffectTemplate);
 	}
+
+	if (GetWorld()->GetNetMode() == NM_Client)
+	{
+		UE_LOG(LogDebug, Verbose, TEXT("%s::ShowActive (Pickup) - Call CheckTouching on client"), *GetName());
+		GetOuterAUTWeaponLocker()->CheckTouching();
+	}
 }
 
 void AUTWeaponLocker::ShowHidden()
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::ShowHidden"), *GetName());
 	if (CurrentState)
 	{
 		CurrentState->ShowHidden();
@@ -729,8 +821,9 @@ void AUTWeaponLocker::ShowHidden()
 
 void AUTWeaponLocker::ShowHiddenGlobal_Implementation()
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::ShowHiddenGlobal"), *GetName());
 	bIsActive = false;
-	SetPlayerNearby(nullptr, false, false);
+	SetPlayerNearby(nullptr, false, false, bForceNearbyPlayers);
 	if (AmbientEffect)
 	{
 		AmbientEffect->SetTemplate(InactiveEffectTemplate);
@@ -765,7 +858,7 @@ void AUTWeaponLocker::GotoState(UUTWeaponLockerState* NewState)
 {
 	if (NewState == NULL || !NewState->IsIn(this))
 	{
-		UE_LOG(LogDebug, Warning, TEXT("Attempt to send %s to invalid state %s"), *GetName(), *GetFullNameSafe(NewState));
+		UE_LOG(LogDebug, Warning, TEXT("Attempt to send %s to invalid state %s"), *GetName(), *GetNameSafe(NewState));
 		NewState = GlobalState;
 	}
 
@@ -1237,6 +1330,8 @@ void UUTWeaponLockerStatePickup::BeginState_Implementation(const UUTWeaponLocker
 
 bool UUTWeaponLockerStatePickup::OverrideProcessTouch_Implementation(APawn* TouchedBy)
 {
+	UE_LOG(LogDebug, Verbose, TEXT("%s::OverrideProcessTouch (Pickup) - TouchedBy: %s"), *GetName(), *GetNameSafe(TouchedBy));
+
 	// handle client effects (hiding weapons in locker).
 	// ProcessTouch is aborting on the cient machine and won't trigger GiveLockerWeapons
 	// GiveLockerWeapons is aborting itself and only hiding the weapons
@@ -1244,7 +1339,9 @@ bool UUTWeaponLockerStatePickup::OverrideProcessTouch_Implementation(APawn* Touc
 	{
 		if (GetOuterAUTWeaponLocker()->AllowPickupBy(TouchedBy, true))
 		{
+			UE_LOG(LogDebug, Verbose, TEXT("%s::OverrideProcessTouch (Pickup) - Handle client touch"), *GetName());
 			GetOuterAUTWeaponLocker()->GiveLockerWeapons(TouchedBy, true);
+			GetOuterAUTWeaponLocker()->StartSleeping();
 		}
 	}
 
@@ -1253,9 +1350,22 @@ bool UUTWeaponLockerStatePickup::OverrideProcessTouch_Implementation(APawn* Touc
 
 void UUTWeaponLockerStatePickup::StartSleeping_Implementation()
 {
-	if (GetOuterAUTWeaponLocker()->LockerRespawnTime <= 0.f)
+	UE_LOG(LogDebug, Verbose, TEXT("%s::StartSleeping (Pickup)"), *GetName());
+	if (auto WL = GetOuterAUTWeaponLocker())
 	{
-		GetOuterAUTWeaponLocker()->GotoState(GetOuterAUTWeaponLocker()->SleepingState);
+		if (WL->LockerRespawnTime <= 0.f)
+		{
+			WL->GotoState(WL->SleepingState);
+		}
+		else if (WL->Role == ROLE_Authority)
+		{
+			const bool bTimerActive = WL->GetWorldTimerManager().IsTimerActive(*WL->GetCheckTouchingHandle());
+			UE_LOG(LogDebug, Verbose, TEXT("%s::StartSleeping - CheckTouching Timer active: %s"), *GetName(), bTimerActive ? TEXT("true") : TEXT("false"));
+			if (!bTimerActive)
+			{
+				WL->GetWorldTimerManager().SetTimer(*WL->GetCheckTouchingHandle(), WL, &AUTWeaponLocker::CheckTouching, WL->LockerRespawnTime, false);
+			}
+		}
 	}
 }
 
@@ -1267,7 +1377,7 @@ void UUTWeaponLockerStatePickup::Tick_Implementation(float DeltaTime)
 	if (WL == NULL)
 		return;
 
-	if (WL->bIsActive && GetWorld()->GetNetMode() != NM_DedicatedServer)
+	if (GetWorld()->GetNetMode() != NM_DedicatedServer)
 	{
 		if (GetWorld()->TimeSeconds > WL->NextProximityCheckTime)
 		{
@@ -1275,15 +1385,19 @@ void UUTWeaponLockerStatePickup::Tick_Implementation(float DeltaTime)
 			bool bNewPlayerNearby = false;
 
 			WL->NextProximityCheckTime = GetWorld()->TimeSeconds + 0.2f + 0.1f * FMath::FRand();
-			for (FLocalPlayerIterator It(GEngine, GetWorld()); It; ++It)
+			if (WL->bIsActive)
 			{
-				if (It->PlayerController != NULL && It->PlayerController->GetPawn())
+				for (FLocalPlayerIterator It(GEngine, GetWorld()); It; ++It)
 				{
-					if ((WL->GetActorLocation() - It->PlayerController->GetPawn()->GetActorLocation()).SizeSquared() < WL->ProximityDistanceSquared)
+					if (It->PlayerController != NULL && It->PlayerController->GetPawn())
 					{
-						bNewPlayerNearby = true;
-						NearbyPC = It->PlayerController;
-						break;
+						if ((WL->GetActorLocation() - It->PlayerController->GetPawn()->GetActorLocation()).SizeSquared() < WL->ProximityDistanceSquared)
+						{
+							UE_LOG(LogDebug, Verbose, TEXT("%s::Tick (Pickup) - %s is near this locker"), *GetName(), *GetNameSafe(It->PlayerController));
+							bNewPlayerNearby = true;
+							NearbyPC = It->PlayerController;
+							break;
+						}
 					}
 				}
 			}
