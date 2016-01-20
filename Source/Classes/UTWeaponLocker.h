@@ -326,10 +326,10 @@ public:
 	void DestroyWeapons();
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
-	virtual void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
+	virtual void HandlePickUpWeapons(AActor* Other, bool bHideWeapons);
 
 	UFUNCTION(BlueprintCallable, Category = Locker, meta = (BlueprintProtected))
-	virtual void GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons);
+	virtual void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
 
 	/** Announce pickup to recipient */
 	UFUNCTION(BlueprintCallable, Category = Pickup)
@@ -686,7 +686,7 @@ class UUTWeaponLockerState : public UScriptState
 	void ShowHidden();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup)
-	void GiveLockerWeapons(AActor* Other, bool bHideWeapons);
+	void HandlePickUpWeapons(AActor* Other, bool bHideWeapons);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Pickup)
 	float BotDesireability(APawn* Asker, float TotalDistance);
@@ -709,7 +709,7 @@ inline bool UUTWeaponLockerState::OverrideProcessTouch_Implementation(APawn* Tou
 inline void UUTWeaponLockerState::StartSleeping_Implementation(){ return; }
 inline void UUTWeaponLockerState::ShowActive_Implementation(){ return; }
 inline void UUTWeaponLockerState::ShowHidden_Implementation(){ GetOuterAUTWeaponLocker()->ShowHiddenGlobal(); }
-inline void UUTWeaponLockerState::GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons){ return; }
+inline void UUTWeaponLockerState::HandlePickUpWeapons_Implementation(AActor* Other, bool bHideWeapons){ return; }
 inline float UUTWeaponLockerState::BotDesireability_Implementation(APawn* Asker, float TotalDistance)
 {
 	return GetOuterAUTWeaponLocker()->BotDesireabilityGlobal(Asker, TotalDistance);
@@ -766,7 +766,7 @@ class UUTWeaponLockerStatePickup : public UUTWeaponLockerState
 	virtual bool OverrideProcessTouch_Implementation(APawn* TouchedBy) override;
 	virtual void Tick_Implementation(float DeltaTime) override;
 
-	virtual void GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons) override;
+	virtual void HandlePickUpWeapons_Implementation(AActor* Other, bool bHideWeapons) override;
 	virtual void ShowActive_Implementation() override;
 	virtual void StartSleeping_Implementation() override;
 

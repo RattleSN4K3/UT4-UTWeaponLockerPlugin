@@ -463,7 +463,7 @@ void AUTWeaponLocker::RecheckValidTouch()
 void AUTWeaponLocker::GiveTo_Implementation(APawn* Target)
 {
 	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveTo - Target: %s"), *GetName(), *GetNameSafe(Target));
-	GiveLockerWeapons(Target, true);
+	HandlePickUpWeapons(Target, true);
 }
 
 void AUTWeaponLocker::AnnouncePickup(AUTCharacter* P, TSubclassOf<AUTInventory> NewInventoryType, AUTInventory* NewInventory/* = nullptr*/)
@@ -474,31 +474,31 @@ void AUTWeaponLocker::AnnouncePickup(AUTCharacter* P, TSubclassOf<AUTInventory> 
 	}
 }
 
-void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
+void AUTWeaponLocker::HandlePickUpWeapons(AActor* Other, bool bHideWeapons)
 {
-	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
+	UE_LOG(LogDebug, Verbose, TEXT("%s::HandlePickUpWeapons - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
 	if (CurrentState)
 	{
-		CurrentState->GiveLockerWeapons(Other, bHideWeapons);
+		CurrentState->HandlePickUpWeapons(Other, bHideWeapons);
 	}
 }
 
-void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons)
+void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
 {
-	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
+	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
 	AUTCharacter* Recipient = Cast<AUTCharacter>(Other);
 	if (Recipient == NULL)
 		return;
 
 	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("ENetRole"), true);
-	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Role: %s"), *GetName(), EnumPtr ? *EnumPtr->GetDisplayNameText(Role.GetValue()).ToString() : *FString(TEXT("")));
+	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons - Role: %s"), *GetName(), EnumPtr ? *EnumPtr->GetDisplayNameText(Role.GetValue()).ToString() : *FString(TEXT("")));
 
 	APawn* DriverPawn = Recipient->DrivenVehicle ? Recipient->DrivenVehicle : Recipient;
 	if (DriverPawn && DriverPawn->IsLocallyControlled())
 	{
 		if (bHideWeapons && bIsActive)
 		{
-			UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Register player %s and start timer ShowActive in %i"), *GetName(), *GetNameSafe(DriverPawn->GetController()), LockerRespawnTime);
+			UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons - Register player %s and start timer ShowActive in %i"), *GetName(), *GetNameSafe(DriverPawn->GetController()), LockerRespawnTime);
 
 			// register local player by bind to the Died event in order
 			// to track when the local player dies... to reset the locker
@@ -509,7 +509,7 @@ void AUTWeaponLocker::GiveLockerWeaponsInternal(AActor* Other, bool bHideWeapons
 		}
 		else
 		{
-			UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeaponsInternal - Clear timer ShowActive"), *GetName());
+			UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons - Clear timer ShowActive"), *GetName());
 			GetWorldTimerManager().ClearTimer(HideWeaponsHandle);
 		}
 	}
@@ -612,11 +612,10 @@ void UUTWeaponLockerStatePickup::NotifyLocalPlayerDead_Implementation(APlayerCon
 	GetOuterAUTWeaponLocker()->ShowActive();
 }
 
-// Note: This is only in LockerPickup state
-void UUTWeaponLockerStatePickup::GiveLockerWeapons_Implementation(AActor* Other, bool bHideWeapons)
+void UUTWeaponLockerStatePickup::HandlePickUpWeapons_Implementation(AActor* Other, bool bHideWeapons)
 {
-	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons (Pickup) - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
-	GetOuterAUTWeaponLocker()->GiveLockerWeaponsInternal(Other, bHideWeapons);
+	UE_LOG(LogDebug, Verbose, TEXT("%s::HandlePickUpWeapons (Pickup) - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
+	GetOuterAUTWeaponLocker()->GiveLockerWeapons(Other, bHideWeapons);
 }
 
 void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects, bool bForce/* = false*/)
@@ -1330,13 +1329,13 @@ bool UUTWeaponLockerStatePickup::OverrideProcessTouch_Implementation(APawn* Touc
 
 	// handle client effects (hiding weapons in locker).
 	// ProcessTouch is aborting on the cient machine and won't trigger GiveLockerWeapons
-	// GiveLockerWeapons is aborting itself and only hiding the weapons
+	// HandlePickUpWeapons is aborting itself and only hiding the weapons
 	if (GetOuterAUTWeaponLocker()->Role < ROLE_Authority && GetOuterAUTWeaponLocker()->bIsActive && TouchedBy && TouchedBy->Controller && TouchedBy->Controller->IsLocalController())
 	{
 		if (GetOuterAUTWeaponLocker()->AllowPickupBy(TouchedBy, true))
 		{
 			UE_LOG(LogDebug, Verbose, TEXT("%s::OverrideProcessTouch (Pickup) - Handle client touch"), *GetName());
-			GetOuterAUTWeaponLocker()->GiveLockerWeapons(TouchedBy, true);
+			GetOuterAUTWeaponLocker()->HandlePickUpWeapons(TouchedBy, true);
 			GetOuterAUTWeaponLocker()->StartSleeping();
 		}
 	}
