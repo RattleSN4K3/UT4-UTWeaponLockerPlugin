@@ -1121,40 +1121,24 @@ void AUTWeaponLocker::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 			}
 		}
 
-		FString(*JoinArray)(const TArray<FString>& InStates, FString Delimiter);
-		JoinArray = [](const TArray<FString>& InStates, FString Delimiter)
-		{
-			FString Str;
-			if (InStates.Num() > 0)
-			{
-				Str = InStates[0];
-				for (int32 i = 1; i < InStates.Num(); i++)
-				{
-					Str += Delimiter;
-					Str += InStates[i];
-				}
-			}
-			return Str;
-		};
-
 		FString OptionalNewLine = NewLine;
 		TArray<FString> MessageStrs;
 		if (AutoStates.Num() > 1)
 		{
-			MessageStrs.Add(FString::Printf(TEXT("Multiple States have 'Auto' flag set: %s%s"), *OptionalNewLine, *JoinArray(AutoStates, NewLine)));
+			MessageStrs.Add(FString::Printf(TEXT("Multiple States have 'Auto' flag set: %s%s"), *OptionalNewLine, *FString::Join(AutoStates, *NewLine)));
 		}
 		if (NoNamesStates.Num() > 0)
 		{
-			MessageStrs.Add(FString::Printf(TEXT("Some States have no name: %s%s"), *OptionalNewLine, *JoinArray(NoNamesStates, NewLine)));
+			MessageStrs.Add(FString::Printf(TEXT("Some States have no name: %s%s"), *OptionalNewLine, *FString::Join(NoNamesStates, *NewLine)));
 		}
 		if (DupNamesStates.Num() > 0)
 		{
-			MessageStrs.Add(FString::Printf(TEXT("Duplicate state names found: %s%s"), *OptionalNewLine, *JoinArray(DupNamesStates, NewLine)));
+			MessageStrs.Add(FString::Printf(TEXT("Duplicate state names found: %s%s"), *OptionalNewLine, *FString::Join(DupNamesStates, *NewLine)));
 		}
 
 		if (MessageStrs.Num() > 0)
 		{
-			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(JoinArray(MessageStrs, NewParagraph)));
+			FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(FString::Join(MessageStrs, *NewParagraph)));
 		}
 	}
 	else if (MemberName == GET_MEMBER_NAME_CHECKED(AUTWeaponLocker, Weapons))
