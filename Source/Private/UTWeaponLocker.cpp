@@ -1386,7 +1386,8 @@ void UUTWeaponLockerStatePickup::Tick_Implementation(float DeltaTime)
 				{
 					if (It->PlayerController != NULL && It->PlayerController->GetPawn())
 					{
-						if ((WL->GetActorLocation() - It->PlayerController->GetPawn()->GetActorLocation()).SizeSquared() < WL->ProximityDistanceSquared)
+						float Dist(FVector::DistSquared(WL->GetActorLocation(), It->PlayerController->GetPawn()->GetActorLocation()));
+						if (Dist < WL->ProximityDistanceSquared)
 						{
 							UE_LOG(LogDebug, Verbose, TEXT("%s::Tick (Pickup) - %s is near this locker"), *GetName(), *GetNameSafe(It->PlayerController));
 							bNewPlayerNearby = true;
