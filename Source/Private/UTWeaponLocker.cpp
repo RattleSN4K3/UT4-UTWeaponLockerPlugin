@@ -1112,7 +1112,7 @@ void AUTWeaponLocker::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		TArray<FName> StateNames;
 		for (int32 i = 0; i < States.Num(); i++)
 		{
-			FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].State ? *States[i].State->GetName() : TEXT("None"));
+			FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), *GetNameSafe(States[i].StateClass));
 			if (States[i].bAuto)
 			{
 				AutoStates.Add(StateInfo);
@@ -1200,7 +1200,7 @@ bool AUTWeaponLocker::HasStateErrors(TArray<FString>& StateErrors)
 	TArray<FName> StateNames;
 	for (int32 i = 0; i < States.Num(); i++)
 	{
-		FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), States[i].State ? *States[i].State->GetName() : TEXT("None"));
+		FString StateInfo = FString::Printf(TEXT("[%i] Name: %s  State: %s"), i, *States[i].StateName.ToString(), *GetNameSafe(States[i].StateClass));
 		if (States[i].bAuto)
 		{
 			AutoStates.Add(StateInfo);
@@ -1219,7 +1219,7 @@ bool AUTWeaponLocker::HasStateErrors(TArray<FString>& StateErrors)
 			StateNames.Add(States[i].StateName);
 		}
 
-		if (States[i].State == NULL)
+		if (States[i].StateClass == NULL)
 		{
 			InvalidStates.Add(StateInfo);
 		}
