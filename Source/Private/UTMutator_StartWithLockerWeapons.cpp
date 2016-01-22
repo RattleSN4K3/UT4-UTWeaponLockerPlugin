@@ -17,9 +17,9 @@ void AUTMutator_StartWithLockerWeapons::ModifyPlayer_Implementation(APawn* Other
 	AUTCharacter* UTChar = Cast<AUTCharacter>(Other);
 	if (UTChar && UTChar->Controller && bIsNewSpawn)
 	{
-		AUTWeaponLocker* BestLocker = NULL;
 		if (UTChar->bCanPickupItems)
 		{
+			AUTWeaponLocker* BestLocker = NULL;
 			AUTTeamInfo* Team = Cast<AUTPlayerState>(UTChar->PlayerState) ? Cast<AUTPlayerState>(UTChar->PlayerState)->Team : NULL;
 			if (Team)
 			{
