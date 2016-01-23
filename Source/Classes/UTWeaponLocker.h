@@ -249,6 +249,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	TArray<FVector> LockerPositions;
 
+	/** offsets from locker rotation how to rotate weapon meshes */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
+	TArray<FRotator> LockerRotations;
+
 	/** how high the weapons floats (additional Z axis translation applied to pickup mesh) */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locker|Display", meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	float LockerFloatHeight;

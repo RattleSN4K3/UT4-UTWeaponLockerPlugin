@@ -69,12 +69,19 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	LockerRespawnTime = 30.f;
 	LockerString = LOCTEXT("LockerString", "Weapon Locker");
 
-	LockerPositions.Add(FVector(18.0, -30.0, 0.f));
-	LockerPositions.Add(FVector(-15.0, 25.0, 0.f));
-	LockerPositions.Add(FVector(34.0, -2.0, 0.f));
-	LockerPositions.Add(FVector(-30.0, 0.0, 0.f));
-	LockerPositions.Add(FVector(16.0, 22.0, 0.f));
-	LockerPositions.Add(FVector(-19.0, -32.0, 0.f));
+	LockerPositions.Add(FVector(20.f, -34.6f, 0.f));
+	LockerPositions.Add(FVector(-20.f, 34.6f, 0.f));
+	LockerPositions.Add(FVector(40.f, 0.f, 0.f));
+	LockerPositions.Add(FVector(-40.f, 0.f, 0.f));
+	LockerPositions.Add(FVector(20.f, 34.6f, 0.f));
+	LockerPositions.Add(FVector(-20.f, -34.6f, 0.f));
+
+	LockerRotations.Add(FRotator(0.f, 30.f, -5.f));
+	LockerRotations.Add(FRotator(0.f, 210.f, -5.f));
+	LockerRotations.Add(FRotator(0.f, 90.f, -5.f));
+	LockerRotations.Add(FRotator(0.f, 270.f, -5.f));
+	LockerRotations.Add(FRotator(0.f, 150.f, -5.f));
+	LockerRotations.Add(FRotator(0.f, 330.f, -5.f));
 
 	LockerFloatHeight = 55.f;
 
@@ -299,7 +306,7 @@ void AUTWeaponLocker::CreatePickupMeshForSlot(UMeshComponent*& PickupMesh, int32
 {
 	if (LockerPositions.IsValidIndex(SlotIndex))
 	{
-		const FRotator RotationOffset = WeaponLockerRotation;
+		const FRotator RotationOffset = LockerRotations[SlotIndex] + WeaponLockerRotation;
 		AUTPickupInventory::CreatePickupMesh(this, PickupMesh, PickupInventoryType, 0.f, RotationOffset, false);
 		if (PickupMesh != NULL)
 		{
@@ -658,7 +665,8 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 
 					if (bPlayEffects)
 					{
-						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, LockerWeapons[i].PickupMesh->GetComponentLocation());
+						const FRotator RotationOffset = LockerRotations.IsValidIndex(i) ? LockerRotations[i] : FRotator::ZeroRotator;
+						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, LockerWeapons[i].PickupMesh->GetComponentLocation(), RotationOffset);
 					}
 				}
 			}
@@ -681,7 +689,8 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 					LockerWeapons[i].PickupMesh->SetHiddenInGame(true);
 					if (bPlayEffects)
 					{
-						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, LockerWeapons[i].PickupMesh->GetComponentLocation());
+						const FRotator RotationOffset = LockerRotations.IsValidIndex(i) ? LockerRotations[i] : FRotator::ZeroRotator;
+						UGameplayStatics::SpawnEmitterAtLocation(this, WeaponSpawnEffectTemplate, LockerWeapons[i].PickupMesh->GetComponentLocation(), RotationOffset);
 					}
 				}
 			}
