@@ -396,7 +396,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ShowHidden();
 
-	/** replaces an entry in the Weapons array (generally used by mutators) */
+	/** adds an entry to the Weapons array (generally used by mutators) */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker)
 	virtual void AddWeapon(TSubclassOf<AUTWeapon> NewWeaponClass);
 
