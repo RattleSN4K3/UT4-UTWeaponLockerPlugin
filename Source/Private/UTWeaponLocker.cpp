@@ -48,16 +48,22 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 
 	RootComponent = ObjectInitializer.CreateDefaultSubobject<USceneComponent, USceneComponent>(this, TEXT("DummyRoot"), false);
 
-	Collision->InitCapsuleSize(78.0f, 110.0f);
-	Collision->Mobility = EComponentMobility::Movable;
-	Collision->AttachParent = RootComponent;
-	Collision->OnComponentBeginOverlap.AddDynamic(this, &AUTWeaponLocker::OnOverlapBegin);
-	Collision->RelativeLocation.Z = 110.f;
+	if (Collision)
+	{
+		Collision->InitCapsuleSize(78.0f, 110.0f);
+		Collision->Mobility = EComponentMobility::Movable;
+		Collision->AttachParent = RootComponent;
+		Collision->OnComponentBeginOverlap.AddDynamic(this, &AUTWeaponLocker::OnOverlapBegin);
+		Collision->RelativeLocation.Z = 110.f;
+	}
 
 	BaseMesh = ObjectInitializer.CreateDefaultSubobject<UStaticMeshComponent>(this, TEXT("BaseMeshComp"));
-	BaseMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	//BaseMesh->SetStaticMesh(ConstructorStatics.BaseMesh.Object);
-	BaseMesh->AttachParent = RootComponent;
+	if (BaseMesh)
+	{
+		BaseMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		//BaseMesh->SetStaticMesh(ConstructorStatics.BaseMesh.Object);
+		BaseMesh->AttachParent = RootComponent;
+	}
 
 	if (TimerEffect != NULL)
 	{
