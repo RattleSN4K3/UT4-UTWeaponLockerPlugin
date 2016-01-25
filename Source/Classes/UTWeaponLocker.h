@@ -300,6 +300,7 @@ public:
 
 	//Begin AActor Interface
 	virtual void BeginPlay() override;
+	virtual void Reset() override;
 	virtual void PreInitializeComponents() override;
 	virtual void PostInitializeComponents() override;
 	virtual void Tick(float DeltaTime) override;
@@ -415,21 +416,31 @@ public:
 	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsDisabled, Category = Locker)
 	bool bIsDisabled;
 
+	UPROPERTY(BlueprintReadOnly, Category = Locker, meta = (BlueprintProtected))
+	bool bIsEnabling;
+
 	UFUNCTION(BlueprintNativeEvent)
 	void OnRep_IsDisabled();
 
-	UFUNCTION(BlueprintCallable, Category = Locker)
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker)
 	virtual void DisablePickup()
 	{
 		bIsDisabled = true;
 		GotoState(DisabledState);
 	}
 
-	UFUNCTION(BlueprintCallable, Category = Locker)
-	virtual void EnablePickup()
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker, meta = (bReset = "true", AdvancedDisplay = "bReset"))
+	virtual void EnablePickup(bool bReset = true)
 	{
+		bIsEnabling = true;
 		bIsDisabled = false;
 		SetInitialStateGlobal();
+
+		if (bReset)
+		{
+			AUTWeaponLocker::Reset();
+		}
+		bIsEnabling = false;
 	}
 
 	/** checks for anyone touching the pickup and checks if they should get the item

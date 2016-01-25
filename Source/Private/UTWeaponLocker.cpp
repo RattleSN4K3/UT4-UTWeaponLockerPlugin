@@ -364,8 +364,10 @@ void AUTWeaponLocker::OnRep_IsDisabled_Implementation()
 	SetInitialStateGlobal();
 }
 
-void AUTWeaponLocker::Reset_Implementation()
+void AUTWeaponLocker::Reset()
 {
+	AActor::Reset();
+
 	if (!State.bActive)
 	{
 		WakeUp();
@@ -380,6 +382,16 @@ void AUTWeaponLocker::Reset_Implementation()
 	{
 		// clear customers, so players are able to pick up weapons again on reset
 		Customers.Empty();
+	}
+}
+
+void AUTWeaponLocker::Reset_Implementation()
+{
+	static bool bRecursionGuard = false;
+	if (!bRecursionGuard)
+	{
+		TGuardValue<bool> Guard(bRecursionGuard, true);
+		AUTWeaponLocker::Reset();
 	}
 }
 
