@@ -265,7 +265,7 @@ void AUTWeaponLocker::PostActorCreated()
 void AUTWeaponLocker::InitializeWeapons_Implementation()
 {
 	// clear out null entries
-	for (int32 i = 0; i < Weapons.Num() && i < LockerPositions.Num(); i++)
+	for (int32 i = 0; i < Weapons.Num(); i++)
 	{
 		if (Weapons[i].WeaponClass == NULL)
 		{
