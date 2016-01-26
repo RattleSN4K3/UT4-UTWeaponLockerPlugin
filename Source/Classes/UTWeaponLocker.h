@@ -282,8 +282,21 @@ public:
 	UParticleSystem* WeaponSpawnEffectTemplate;
 
 	/** respawn time for the Locker; if it's <= 0 then the pickup doesn't respawn until the round resets */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, Category = Locker)
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_LockerRespawnTimeChanged, Category = Locker)
 	float LockerRespawnTime;
+public:
+
+	/** returns respawn time for the Locker */
+	virtual float GetLockerRespawnTime() const
+	{
+		return LockerRespawnTime;
+	}
+
+	/** event when the Locker respawn time value has been replicated 
+	Note: Also called for local players in a Listen Server environment */
+	UFUNCTION(BlueprintNativeEvent)
+	void OnRep_LockerRespawnTimeChanged(float OldLockerRespawnTime);
 
 	/** Locker message to display on player HUD. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Locker)
@@ -379,7 +392,7 @@ public:
 	TArray<FWeaponPickupCustomer> Customers;
 
 	/** whether to clear customers on reset (when the level is reset or the Locker is reset manually).
-	 * Clearing customers would allow the same players taken the weapon again on reset
+	 * Clearing customers would allow the same players taking the weapon again on reset
 	 * (otherwise only if players die, they are able to take the weapons or wait) */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Locker)
 	bool bClearCustomersOnReset;
@@ -391,6 +404,17 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects, bool bForce = false);
+
+	/** set the respawn time for the Locker; if it's <= 0 then the pickup will go into sleep mode after a valid pickup.
+	* @param	NewLockerRespawnTime - new respawn time
+	* @param	bAutoSleep - whether to call StartSleep
+	*/
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker, meta = (bAutoSleep = "true", AdvancedDisplay = "bAutoSleep"))
+	virtual void SetLockerRespawnTime(float NewLockerRespawnTime, bool bAutoSleep = true);
+
+	/** event called when the Locker respawn time has changed programmatically, server-sided only */
+	UFUNCTION(BlueprintImplementableEvent, BlueprintAuthorityOnly)
+	virtual void OnLockerRespawnTimeSet(float OldTime);
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ShowActive();

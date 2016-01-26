@@ -721,6 +721,57 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 	}
 }
 
+void AUTWeaponLocker::SetLockerRespawnTime(float NewLockerRespawnTime, bool bAutoSleep/* = true*/)
+{
+	float OldTime(LockerRespawnTime);
+	LockerRespawnTime = NewLockerRespawnTime;
+
+	for (auto& Customer : Customers)
+	{
+		Customer.NextPickupTime -= OldTime;
+		Customer.NextPickupTime += NewLockerRespawnTime;
+	}
+
+	OnLockerRespawnTimeSet(OldTime);
+
+	// update locally
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		OnRep_LockerRespawnTimeChanged(OldTime);
+	}
+
+	if (bAutoSleep)
+	{
+		StartSleeping();
+	}
+}
+
+void AUTWeaponLocker::OnRep_LockerRespawnTimeChanged_Implementation(float OldLockerRespawnTime)
+{
+	// restart local timer to re-draw weapons 
+	if (GetWorldTimerManager().IsTimerActive(HideWeaponsHandle))
+	{
+		float Elapsed = GetWorldTimerManager().GetTimerElapsed(HideWeaponsHandle);
+		float NewTimer = Elapsed - LockerRespawnTime;
+
+		if (NewTimer > 0.f)
+		{
+			GetWorldTimerManager().SetTimer(HideWeaponsHandle, this, &AUTWeaponLocker::ShowActive, NewTimer, false);
+		}
+		else
+		{
+			GetWorldTimerManager().SetTimerForNextTick(this, &AUTWeaponLocker::ShowActive);
+		}
+	}
+
+	// conditionally check whether to goto Sleep state on client only,
+	// server is already calling it right when the value has changed through the setter
+	if (Role < ROLE_Authority)
+	{
+		StartSleeping();
+	}
+}
+
 bool AUTWeaponLocker::AddCustomer(APawn* P)
 {
 	AUTCharacter* UTChar = Cast<AUTCharacter>(P);
@@ -1308,6 +1359,7 @@ void UUTWeaponLockerStateSleeping::BeginState_Implementation(const UUTWeaponLock
 {
 	Super::BeginState_Implementation(PrevState);
 
+	GetOuterAUTWeaponLocker()->bForceNearbyPlayers = true;
 	GetOuterAUTWeaponLocker()->SetActorEnableCollision(false);
 	GetOuterAUTWeaponLocker()->ShowHidden();
 
@@ -1316,6 +1368,7 @@ void UUTWeaponLockerStateSleeping::BeginState_Implementation(const UUTWeaponLock
 	{
 		GetOuterAUTWeaponLocker()->OnRep_IsSleeping();
 	}
+	GetOuterAUTWeaponLocker()->bForceNearbyPlayers = false;
 }
 
 void UUTWeaponLockerStateSleeping::EndState_Implementation(const UUTWeaponLockerState* NextState)
