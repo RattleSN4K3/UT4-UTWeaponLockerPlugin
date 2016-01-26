@@ -721,15 +721,23 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 	}
 }
 
-void AUTWeaponLocker::SetLockerRespawnTime(float NewLockerRespawnTime, bool bAutoSleep/* = true*/)
+void AUTWeaponLocker::SetLockerRespawnTime(float NewLockerRespawnTime, bool bAutoSleep, TEnumAsByte<ELockerCustomerAction::Type> CustomersAction)
 {
 	float OldTime(LockerRespawnTime);
 	LockerRespawnTime = NewLockerRespawnTime;
 
-	for (auto& Customer : Customers)
+	switch (CustomersAction)
 	{
-		Customer.NextPickupTime -= OldTime;
-		Customer.NextPickupTime += NewLockerRespawnTime;
+	case ELockerCustomerAction::Clear:
+		Customers.Empty();
+		break;
+	case ELockerCustomerAction::Update:
+		for (auto& Customer : Customers)
+		{
+			Customer.NextPickupTime -= OldTime;
+			Customer.NextPickupTime += NewLockerRespawnTime;
+		}
+		break;
 	}
 
 	OnLockerRespawnTimeSet(OldTime);

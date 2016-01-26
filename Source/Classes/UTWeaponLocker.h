@@ -4,6 +4,19 @@
 
 class UUTWeaponLockerState;
 
+UENUM(BlueprintType)
+namespace ELockerCustomerAction
+{
+	enum Type
+	{
+		None UMETA(DisplayName = "Keep"),
+		Update UMETA(DisplayName = "Update times"),
+		Clear UMETA(DisplayName = "Clear customers"),
+		// should always be last, used to size arrays
+		MAX UMETA(Hidden)
+	};
+}
+
 UCLASS(Abstract, CustomConstructor)
 class UScriptState : public UObject
 {
@@ -409,8 +422,8 @@ public:
 	* @param	NewLockerRespawnTime - new respawn time
 	* @param	bAutoSleep - whether to call StartSleep
 	*/
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker, meta = (bAutoSleep = "true", AdvancedDisplay = "bAutoSleep"))
-	virtual void SetLockerRespawnTime(float NewLockerRespawnTime, bool bAutoSleep = true);
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker, meta = (bAutoSleep = "true", AdvancedDisplay = "bAutoSleep,CustomersAction"))
+	virtual void SetLockerRespawnTime(float NewLockerRespawnTime, bool bAutoSleep = true, TEnumAsByte<ELockerCustomerAction::Type> CustomersAction = ELockerCustomerAction::Update);
 
 	/** event called when the Locker respawn time has changed programmatically, server-sided only */
 	UFUNCTION(BlueprintImplementableEvent, BlueprintAuthorityOnly)
