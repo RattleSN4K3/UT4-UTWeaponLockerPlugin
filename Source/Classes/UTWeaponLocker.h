@@ -418,6 +418,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects, bool bForce = false);
 
+	/** client sided event called when the Locker weapons are created or destroyed */
+	UFUNCTION(BlueprintImplementableEvent)
+	virtual void OnPlayerNearByChanged(APlayerController* PC, bool bEffectsPlayed);
+
 	/** set the respawn time for the Locker; if it's <= 0 then the pickup will go into sleep mode after a valid pickup.
 	* @param	NewLockerRespawnTime - new respawn time
 	* @param	bAutoSleep - whether to call StartSleep

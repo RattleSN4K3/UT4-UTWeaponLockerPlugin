@@ -718,6 +718,8 @@ void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNear
 			}
 			GetWorldTimerManager().SetTimer(DestroyWeaponsHandle, this, &AUTWeaponLocker::DestroyWeapons, 5.f, false);
 		}
+
+		OnPlayerNearByChanged(PC, bPlayEffects);
 	}
 }
 
