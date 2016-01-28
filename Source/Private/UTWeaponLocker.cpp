@@ -641,6 +641,11 @@ void UUTWeaponLockerStatePickup::HandlePickUpWeapons_Implementation(AActor* Othe
 {
 	UE_LOG(LogDebug, Verbose, TEXT("%s::HandlePickUpWeapons (Pickup) - Other: %s - bHideWeapons: %i"), *GetName(), *GetNameSafe(Other), (int)bHideWeapons);
 	GetOuterAUTWeaponLocker()->GiveLockerWeapons(Other, bHideWeapons);
+
+	if (APawn* P = Cast<APawn>(Other))
+	{
+		GetOuterAUTWeaponLocker()->OnPickupStatusChange.Broadcast(GetOuterAUTWeaponLocker(), P, ELockerPickupStatus::Taken);
+	}
 }
 
 void AUTWeaponLocker::SetPlayerNearby(APlayerController* PC, bool bNewPlayerNearby, bool bPlayEffects, bool bForce/* = false*/)
@@ -898,6 +903,10 @@ void UUTWeaponLockerStatePickup::ShowActive_Implementation()
 		GetOuterAUTWeaponLocker()->AmbientEffect->SetTemplate(GetOuterAUTWeaponLocker()->ActiveEffectTemplate);
 	}
 
+	if (GetWorld()->GetNetMode() != NM_DedicatedServer)
+	{
+		GetOuterAUTWeaponLocker()->OnPickupStatusChange.Broadcast(GetOuterAUTWeaponLocker(), NULL, ELockerPickupStatus::Available);
+	}
 	if (GetWorld()->GetNetMode() == NM_Client)
 	{
 		UE_LOG(LogDebug, Verbose, TEXT("%s::ShowActive (Pickup) - Call CheckTouching on client"), *GetName());

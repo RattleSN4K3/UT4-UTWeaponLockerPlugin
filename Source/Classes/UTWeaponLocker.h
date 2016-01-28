@@ -1,21 +1,9 @@
 #pragma once
 
+#include "UTWeaponLockerTypes.h"
 #include "UTWeaponLocker.generated.h"
 
 class UUTWeaponLockerState;
-
-UENUM(BlueprintType)
-namespace ELockerCustomerAction
-{
-	enum Type
-	{
-		None UMETA(DisplayName = "Keep"),
-		Update UMETA(DisplayName = "Update times"),
-		Clear UMETA(DisplayName = "Clear customers"),
-		// should always be last, used to size arrays
-		MAX UMETA(Hidden)
-	};
-}
 
 UCLASS(Abstract, CustomConstructor)
 class UScriptState : public UObject
@@ -180,9 +168,15 @@ class AUTWeaponLocker : public AUTPickup
 {
 	GENERATED_UCLASS_BODY()
 
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FLockerPickupStatusChangedDelegate, AUTWeaponLocker*, Locker, APawn*, P, ELockerPickupStatus::Type, Status);
+
 	friend class UUTWeaponLockerState;
 	friend class UUTWeaponLockerStateDisabled;
 	friend class UUTWeaponLockerStatePickup;
+
+	/** Broadcast when the pickup status changes [Server only] */
+	UPROPERTY(BlueprintAssignable, Category = Events)
+	FLockerPickupStatusChangedDelegate OnPickupStatusChange;
 
 	// TODO: Move to UTWeapon as boolean flag
 	TArray<TSubclassOf<AUTWeapon>> WarnIfInLocker;
