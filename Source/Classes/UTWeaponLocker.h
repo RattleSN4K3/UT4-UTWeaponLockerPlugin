@@ -350,6 +350,15 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = Locker)
 	void DestroyWeapons();
 
+	/** return whether Other can pick up this item (checks for stacking limits, etc)
+	* the default implementation checks for GameMode/Mutator overrides and returns bDefaultAllowPickup if no overrides are found
+	*/
+	UFUNCTION(BlueprintCallable, Category = Pickup, meta = (DisplayName = "Allow Pickup By", bDefaultAllowPickup = "true", AdvancedDisplay = "bDefaultAllowPickup"))
+	bool Blueprint_AllowPickupBy(APawn* Other, bool bDefaultAllowPickup)
+	{
+		return AllowPickupBy(Other, bDefaultAllowPickup);
+	}
+
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void HandlePickUpWeapons(AActor* Other, bool bHideWeapons);
 
