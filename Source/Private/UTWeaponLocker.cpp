@@ -515,8 +515,10 @@ void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
 	if (Recipient == NULL)
 		return;
 
+#if WITH_EDITOR
 	const UEnum* EnumPtr = FindObject<UEnum>(ANY_PACKAGE, TEXT("ENetRole"), true);
 	UE_LOG(LogDebug, Verbose, TEXT("%s::GiveLockerWeapons - Role: %s"), *GetName(), EnumPtr ? *EnumPtr->GetDisplayNameText(Role.GetValue()).ToString() : *FString(TEXT("")));
+#endif
 
 	APawn* DriverPawn = Recipient->DrivenVehicle ? Recipient->DrivenVehicle : Recipient;
 	if (DriverPawn && DriverPawn->IsLocallyControlled())
