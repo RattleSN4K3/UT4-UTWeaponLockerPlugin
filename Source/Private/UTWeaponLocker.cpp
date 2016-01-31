@@ -1118,6 +1118,8 @@ void AUTWeaponLocker::CreateEditorPickupMeshes()
 				}
 			}
 		}
+
+		OnEditorPickupMeshesCreated();
 	}
 }
 

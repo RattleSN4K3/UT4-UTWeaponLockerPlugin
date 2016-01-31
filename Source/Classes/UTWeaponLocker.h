@@ -688,6 +688,9 @@ public:
 
 #endif // WITH_EDITOR
 
+	UFUNCTION(BlueprintImplementableEvent, Category = Locker, meta = (CallInEditor = "true"))
+	virtual void OnEditorPickupMeshesCreated();
+
 };
 
 UCLASS(Blueprintable, EditInlineNew, CustomConstructor, Within = UTWeaponLocker)
