@@ -1092,21 +1092,39 @@ void AUTWeaponLocker::OnConstruction(const FTransform& Transform)
 	CreateEditorPickupMeshes();
 }
 
+void AUTWeaponLocker::PreEditUndo()
+{
+	CleanupEditorPickupMeshes();
+	Super::PreEditUndo();
+}
+
+void AUTWeaponLocker::PostEditUndo()
+{
+	Super::PostEditUndo();
+	CreateEditorPickupMeshes();
+}
+
+void AUTWeaponLocker::CleanupEditorPickupMeshes()
+{
+	for (auto& EditorMesh : EditorMeshes)
+	{
+		if (EditorMesh)
+		{
+			UnregisterComponentTree(EditorMesh);
+			EditorMesh->DestroyComponent();
+			EditorMesh = NULL;
+		}
+	}
+
+	EditorMeshes.Empty();
+	OnEditorPickupMeshesCleanUp();
+}
+
 void AUTWeaponLocker::CreateEditorPickupMeshes()
 {
 	if (GetWorld() != NULL && GetWorld()->WorldType == EWorldType::Editor)
 	{
-		for (auto& EditorMesh : EditorMeshes)
-		{
-			if (EditorMesh)
-			{
-				UnregisterComponentTree(EditorMesh);
-				EditorMesh->DestroyComponent();
-				EditorMesh = NULL;
-			}
-		}
-
-		EditorMeshes.Empty();
+		CleanupEditorPickupMeshes();
 
 		for (int32 i = 0; i < Weapons.Num() && i < LockerPositions.Num(); i++)
 		{

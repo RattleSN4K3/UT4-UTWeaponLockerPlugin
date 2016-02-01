@@ -682,14 +682,22 @@ public:
 
 	virtual bool HasStateErrors(TArray<FString>& StateErrors);
 
-	/** create transient pickup mesh for editor previewing */
 	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void PreEditUndo() override;
+	virtual void PostEditUndo() override;
+
+	/** cleanup transient pickup meshes in editor previewing */
+	virtual void CleanupEditorPickupMeshes();
+	/** create transient pickup mesh for editor previewing */
 	virtual void CreateEditorPickupMeshes();
 
 #endif // WITH_EDITOR
 
 	UFUNCTION(BlueprintImplementableEvent, Category = Locker, meta = (CallInEditor = "true"))
 	virtual void OnEditorPickupMeshesCreated();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = Locker, meta = (CallInEditor = "true"))
+	virtual void OnEditorPickupMeshesCleanUp();
 
 };
 
