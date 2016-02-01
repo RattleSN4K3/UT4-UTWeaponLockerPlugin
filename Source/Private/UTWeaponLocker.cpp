@@ -165,6 +165,9 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	bPlayerNearby = false;
 	bForceNearbyPlayers = false;
 	NextProximityCheckTime = 0.f;
+
+	// initially replicate weapons
+	bReplacementWeaponsDirty = true;
 }
 
 void AUTWeaponLocker::PreInitializeComponents()
@@ -236,7 +239,18 @@ void AUTWeaponLocker::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>
 	DOREPLIFETIME(AUTWeaponLocker, bIsSleeping);
 	DOREPLIFETIME(AUTWeaponLocker, bIsDisabled);
 	DOREPLIFETIME_CONDITION(AUTWeaponLocker, Weapons, COND_None);
-	DOREPLIFETIME_CONDITION(AUTWeaponLocker, ReplacementWeapons, COND_InitialOnly);
+	DOREPLIFETIME_CONDITION(AUTWeaponLocker, ReplacementWeapons, COND_Custom);
+}
+
+void AUTWeaponLocker::PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker)
+{	
+	if (bReplacementWeaponsDirty)
+	{
+		DOREPLIFETIME_ACTIVE_OVERRIDE(AUTWeaponLocker, ReplacementWeapons, true);
+		bReplacementWeaponsDirty = false;
+	}
+
+	Super::PreReplication(ChangedPropertyTracker);
 }
 
 void AUTWeaponLocker::Tick(float DeltaTime)
@@ -855,6 +869,7 @@ void AUTWeaponLocker::ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeapo
 
 	if (Index >= 0)
 	{
+		bReplacementWeaponsDirty = true;
 		if (Index >= Weapons.Num())
 		{
 			Weapons.SetNum(Index + 1);

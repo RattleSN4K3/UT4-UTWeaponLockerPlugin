@@ -223,6 +223,7 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, ReplicatedUsing = OnRep_Weapons, Category = Locker, meta = (BlueprintProtected, AllowPrivateAccess = "true", ExposeOnSpawn = true))
 	TArray<FWeaponEntry> Weapons;
+	/** local copy of weapon entries to determine whether to initialize the set of weapons by comparing the actual weapon array against this array */
 	UPROPERTY()
 	TArray<FWeaponEntry> WeaponsCopy;
 
@@ -231,6 +232,9 @@ protected:
 
 	UPROPERTY(Replicated, ReplicatedUsing = OnRep_ReplacementWeapons)
 	FReplacementWeaponEntry ReplacementWeapons[6];
+
+	UPROPERTY()
+	bool bReplacementWeaponsDirty;
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(Transient)
@@ -324,6 +328,8 @@ public:
 	virtual void PreInitializeComponents() override;
 	virtual void PostInitializeComponents() override;
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void PreReplication(IRepChangedPropertyTracker & ChangedPropertyTracker) override;
 
 	virtual void PostActorCreated() override;
 	//End AActor Interface
