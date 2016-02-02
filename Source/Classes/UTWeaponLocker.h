@@ -174,7 +174,7 @@ class AUTWeaponLocker : public AUTPickup
 	friend class UUTWeaponLockerStateDisabled;
 	friend class UUTWeaponLockerStatePickup;
 
-	/** Broadcast when the pickup status changes [Server only] */
+	/** Broadcast when the pickup status changes */
 	UPROPERTY(BlueprintAssignable, Category = Events)
 	FLockerPickupStatusChangedDelegate OnPickupStatusChange;
 
@@ -221,12 +221,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Base")
 	UStaticMeshComponent* BaseMesh;
 
+	/** set of weapons */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, ReplicatedUsing = OnRep_Weapons, Category = Locker, meta = (BlueprintProtected, AllowPrivateAccess = "true", ExposeOnSpawn = true))
 	TArray<FWeaponEntry> Weapons;
 	/** local copy of weapon entries to determine whether to initialize the set of weapons by comparing the actual weapon array against this array */
 	UPROPERTY()
 	TArray<FWeaponEntry> WeaponsCopy;
 
+	/** created weapons for displaying purpose */
 	UPROPERTY(BlueprintReadOnly, Category = Locker, meta = (BlueprintProtected, AllowPrivateAccess = "true"))
 	TArray<FWeaponInfo> LockerWeapons;
 
@@ -320,7 +322,7 @@ public:
 	}
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "PreBeginPlay"))
-	virtual void ReceivePreBeginPlay();
+	void ReceivePreBeginPlay();
 
 	//Begin AActor Interface
 	virtual void BeginPlay() override;
@@ -429,7 +431,7 @@ public:
 
 	/** client sided event called when the Locker weapons are created or destroyed */
 	UFUNCTION(BlueprintImplementableEvent)
-	virtual void OnPlayerNearByChanged(APlayerController* PC, bool bEffectsPlayed);
+	void OnPlayerNearByChanged(APlayerController* PC, bool bEffectsPlayed);
 
 	/** set the respawn time for the Locker; if it's <= 0 then the pickup will go into sleep mode after a valid pickup.
 	* @param	NewLockerRespawnTime - new respawn time
@@ -440,7 +442,7 @@ public:
 
 	/** event called when the Locker respawn time has changed programmatically, server-sided only */
 	UFUNCTION(BlueprintImplementableEvent, BlueprintAuthorityOnly)
-	virtual void OnLockerRespawnTimeSet(float OldTime);
+	void OnLockerRespawnTimeSet(float OldTime);
 
 	UFUNCTION(BlueprintCallable, Category = Locker)
 	virtual void ShowActive();
@@ -460,7 +462,7 @@ public:
 	bool bIsSleeping;
 
 	UFUNCTION(BlueprintImplementableEvent)
-	virtual void OnRep_IsSleeping();
+	void OnRep_IsSleeping();
 
 	/** In disabled state */
 	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsDisabled, Category = Locker)
@@ -700,10 +702,10 @@ public:
 #endif // WITH_EDITOR
 
 	UFUNCTION(BlueprintImplementableEvent, Category = Locker, meta = (CallInEditor = "true"))
-	virtual void OnEditorPickupMeshesCreated();
+	void OnEditorPickupMeshesCreated();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = Locker, meta = (CallInEditor = "true"))
-	virtual void OnEditorPickupMeshesCleanUp();
+	void OnEditorPickupMeshesCleanUp();
 
 };
 
