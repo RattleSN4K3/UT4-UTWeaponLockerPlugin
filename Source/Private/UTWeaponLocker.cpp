@@ -572,7 +572,7 @@ void AUTWeaponLocker::GiveLockerWeapons(AActor* Other, bool bHideWeapons)
 			if (Copy == NULL || !Copy->StackPickup(NULL))
 			{
 				FActorSpawnParameters Params;
-				Params.bNoCollisionFail = true;
+				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 				Params.Instigator = Recipient;
 				Copy = GetWorld()->SpawnActor<AUTWeapon>(LocalInventoryType, GetActorLocation(), GetActorRotation(), Params);
 				if (Copy)
@@ -839,7 +839,7 @@ bool AUTWeaponLocker::HasCustomer(APawn* TestPawn)
 {
 	for (int32 i = Customers.Num() - 1; i >= 0; i--)
 	{
-		if (Customers[i].P == NULL || Customers[i].P->bTearOff || Customers[i].P->bPendingKillPending)
+		if (Customers[i].P == NULL || Customers[i].P->bTearOff || Customers[i].P->IsPendingKillPending())
 		{
 			Customers.RemoveAt(i);
 		}
