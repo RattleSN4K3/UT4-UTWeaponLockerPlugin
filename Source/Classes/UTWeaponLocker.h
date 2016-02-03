@@ -149,7 +149,7 @@ struct FReplacementWeaponEntry
 	TSubclassOf<AUTWeapon> WeaponClass;
 
 	FReplacementWeaponEntry()
-		: WeaponClass(NULL), bReplaced(false)
+		: bReplaced(false), WeaponClass(NULL)
 	{}
 
 	bool operator ==(const FReplacementWeaponEntry& Other) const

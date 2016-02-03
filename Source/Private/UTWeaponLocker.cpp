@@ -474,7 +474,6 @@ void AUTWeaponLocker::CheckTouching()
 		APawn* P = Cast<APawn>(TouchingActor);
 		if (P != NULL && P->GetMovementComponent() != NULL)
 		{
-			FHitResult UnusedHitResult;
 			OnOverlapBegin(P, Cast<UPrimitiveComponent>(P->GetMovementComponent()->UpdatedComponent), INDEX_NONE, false, UnusedHitResult);
 		}
 	}
