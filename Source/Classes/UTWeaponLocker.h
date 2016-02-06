@@ -294,8 +294,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Effects)
 	UParticleSystem* WeaponSpawnEffectTemplate;
 
-	/** respawn time for the Locker; if it's <= 0 then the pickup doesn't respawn until the round resets */
 protected:
+	/** respawn time for the Locker; if it's <= 0 then the pickup doesn't respawn until the round resets */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_LockerRespawnTimeChanged, Category = Locker)
 	float LockerRespawnTime;
 public:
