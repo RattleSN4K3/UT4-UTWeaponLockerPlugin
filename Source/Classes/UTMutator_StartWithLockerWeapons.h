@@ -8,6 +8,28 @@
 
 DECLARE_DYNAMIC_DELEGATE_RetVal_OneParam(AUTWeaponLocker*, FGetBestLockerForDelegate, AUTCharacter*, SpawnedPlayer);
 
+USTRUCT(BlueprintType)
+struct FLockerNearbyMap
+{
+	GENERATED_USTRUCT_BODY()
+
+	AUTWeaponLocker* BestLocker;
+	TArray<AUTWeaponLocker*> InactiveLockers;
+
+	FLockerNearbyMap()
+		: BestLocker(NULL)
+	{
+		InactiveLockers.Empty();
+	}
+
+	FLockerNearbyMap(AUTWeaponLocker* InLocker)
+		: BestLocker(InLocker)
+	{
+		InactiveLockers.Empty();
+	}
+
+};
+
 UCLASS(Config = WeaponLocker)
 class AUTMutator_StartWithLockerWeapons : public AUTMutator
 {
@@ -18,7 +40,7 @@ class AUTMutator_StartWithLockerWeapons : public AUTMutator
 	//UPROPERTY(BlueprintAssignable)
 	FGetBestLockerForDelegate OnGetBestLockerFor;
 
-	// TODO: Proper Blueprint support. It is not possible to create an delegate dynamically
+	// TODO: Proper Blueprint support. It is not possible to create a delegate dynamically
 	UFUNCTION(BlueprintCallable, Category = Blueprint)
 	bool SetGetBestLockerForDelegate(const FGetBestLockerForDelegate& NewDelegate)
 	{
@@ -32,6 +54,6 @@ class AUTMutator_StartWithLockerWeapons : public AUTMutator
 	}
 
 
-	TMap<AUTTeamPlayerStart*, AUTWeaponLocker*> BestLockersMap;
+	TMap<AUTTeamPlayerStart*, FLockerNearbyMap> BestLockersMap;
 	AUTWeaponLocker* GetBestLockerFor(AUTTeamPlayerStart* Team);
 };

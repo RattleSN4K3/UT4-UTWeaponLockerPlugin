@@ -36,42 +36,75 @@ void AUTMutator_StartWithLockerWeapons::ModifyPlayer_Implementation(APawn* Other
 			{
 				BestLocker->GiveLockerWeapons(UTChar, false);
 			}
-
 		}
 	}
 }
 
 AUTWeaponLocker* AUTMutator_StartWithLockerWeapons::GetBestLockerFor(AUTTeamPlayerStart* TeamStart)
 {
-	AUTWeaponLocker* Locker = NULL;
+	AUTWeaponLocker* BestLocker = NULL;
 	if (TeamStart)
 	{
-		if (BestLockersMap.Contains(TeamStart))
+		auto& CurrentLockerMap = BestLockersMap.FindOrAdd(TeamStart);
+		BestLocker = CurrentLockerMap.BestLocker;
+		if (BestLocker)
 		{
-			Locker = BestLockersMap[TeamStart];
+			// check if current set Locker has been disabled or sleeps, force re-check if so
+			if (!BestLocker->IsActive())
+			{
+				BestLocker = NULL;
+			}
+			else
+			{
+				// check if all previously inactive lockers may have been enabled/reset, force re-check if so
+				for (int32 i = CurrentLockerMap.InactiveLockers.Num() - 1; i >= 0; i--)
+				{
+					if (auto Locker = CurrentLockerMap.InactiveLockers[i])
+					{
+						if (BestLocker && Locker->IsActive())
+						{
+							BestLocker = NULL;
+						}
+					}
+					else
+					{
+						CurrentLockerMap.InactiveLockers.RemoveAt(i);
+					}
+				}
+			}
 		}
-		else
+
+		if (BestLocker == NULL)
 		{
 			// find nearest weapon locker
 			float Dist = 0.f;
 			float BestDist = 0.f;
+			CurrentLockerMap.InactiveLockers.Empty();
 			for (TActorIterator<AUTWeaponLocker> It(GetWorld()); It; ++It)
 			{
-				if (AUTWeaponLocker* LockerIt = *It)
-				{
-					Dist = FVector::DistSquared(TeamStart->GetActorLocation(), LockerIt->GetActorLocation());
-					if (Locker == NULL || BestDist > Dist)
+				if (AUTWeaponLocker* Locker = *It)
+				{		
+					Dist = FVector::DistSquared(TeamStart->GetActorLocation(), Locker->GetActorLocation());
+					if (BestLocker == NULL || BestDist > Dist)
 					{
-						BestDist = Dist;
-						Locker = LockerIt;
+						// store inactive closer lockers to check for activity again
+						if (BestLocker && !Locker->IsActive())
+						{
+							CurrentLockerMap.InactiveLockers.Add(Locker);
+						}
+						else
+						{
+							BestDist = Dist;
+							BestLocker = Locker;
+						}
 					}
 				}
 			}
 
 			// store locker even if empty
-			BestLockersMap.Add(TeamStart, Locker);
+			CurrentLockerMap.BestLocker = BestLocker;
 		}
 	}
 
-	return Locker;
+	return BestLocker;
 }
