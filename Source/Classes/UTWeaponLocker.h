@@ -457,6 +457,13 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = Locker)
 	virtual void ReplaceWeapon(int32 Index, TSubclassOf<AUTWeapon> NewWeaponClass);
 
+	/** returns whether this Locker is active (e.g. not sleeping, not disabled, etc.) */
+	UFUNCTION(BlueprintPure, Category = Locker)
+	virtual bool IsActive() const
+	{
+		return !bIsDisabled && !bIsSleeping;
+	}
+
 	/** In sleeping state */
 	UPROPERTY(BlueprintReadOnly, Replicated, ReplicatedUsing = OnRep_IsSleeping, Category = Locker)
 	bool bIsSleeping;
