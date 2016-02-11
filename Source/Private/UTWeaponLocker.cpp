@@ -50,11 +50,11 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 
 	if (Collision)
 	{
-		Collision->InitCapsuleSize(78.0f, 110.0f);
+		Collision->InitCapsuleSize(96.0f, 150.0f);
 		Collision->Mobility = EComponentMobility::Movable;
 		Collision->AttachParent = RootComponent;
 		Collision->OnComponentBeginOverlap.AddDynamic(this, &AUTWeaponLocker::OnOverlapBegin);
-		Collision->RelativeLocation.Z = 110.f;
+		Collision->RelativeLocation.Z = 150.f;
 	}
 
 	BaseMesh = ObjectInitializer.CreateDefaultSubobject<UStaticMeshComponent>(this, TEXT("BaseMeshComp"));
@@ -89,11 +89,11 @@ AUTWeaponLocker::AUTWeaponLocker(const FObjectInitializer& ObjectInitializer)
 	LockerRotations.Add(FRotator(0.f, 150.f, -5.f));
 	LockerRotations.Add(FRotator(0.f, 330.f, -5.f));
 
-	LockerFloatHeight = 55.f;
+	LockerFloatHeight = 84.f;
 
 	WeaponLockerOffset = FVector(0.f, 0.f, 15.f);
 	WeaponLockerRotation = FRotator(0.f, 0.f, 270.f);
-	WeaponLockerScale3D = FVector(0.75, 0.65f, 0.75f);
+	WeaponLockerScale3D = FVector(0.875, 0.80f, 0.875f);
 
 	ProximityDistanceSquared = 1500000.0f;
 	ScaleRate = 2.f;
