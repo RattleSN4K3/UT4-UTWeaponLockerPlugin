@@ -1,14 +1,41 @@
 ﻿UTWeaponLockerPlugin
 ==========
 
-## Features
+## Description:
+Weapon lockers contain certain weapons and ammo and refill themselves
+individually for each player. A player can use a specific weapon locker only
+every 30 seconds or after respawning.
 
+Lockers are mainly used in vehicle gametypes, like Onslaught, Assault,Vehicle
+Capture the Flag and Warfare, where players shouldn't have to worry too much
+about getting weapons and ammo.
+
+
+In UT2004, a weapon locker is a round stand with all contained weapons
+attached to it. There's a light at the top, which will glow green if the
+player can reload at the locker.
+
+The weapons and the amount of extra ammo per weapon can be specified for
+each locker by the mapper.
+
+
+In UT3, a weapon locker has a solid base and top connected by an energy beam.
+Available Weapons in the locker are only displayed when the player is close
+enough and allowed to reload at that locker. The green energy cloud is also
+visible from further away if the locker has ammo available for the player.
+
+The available weapons can be specified for each locker by the mapper, the
+ammo amount is hard-coded for each weapon.
+
+## Features
 - Support for dynamically spawning Locker
 - Support for round-based locker
 - Enable and disable Locker on runtime dynamically
 - Add/Replace weapons on runtime (e.g. in Level Blueprint)
 - Customizable state system
 - Bind-able event for level scripting (pickup status)
+- Mutator to respawn with nearby locker weapons
+- Map Error check to show undesired weapons in a locker
 
 # Compiling
 
@@ -34,8 +61,8 @@ The source files should be compiled by the Unreal Build System. Each specific pl
 
 Solution configuration list for each game version:
 - Editor: Development Editor
-- Client: Test
-- Server: Test Server
+- Client: Shipping
+- Server: Shipping Server
 
 Compile the solution with either configuration for the desired version and target platform.
 
@@ -55,10 +82,10 @@ If you are using the specific changelist, as specified in the [CHANGELIST.editor
 0. \[SKIP IF CHANGELISTS [[1](CHANGELIST.editor)][[2](CHANGELIST.client)] ARE THE SAME\]. Hex-modify the specific binary file with the changelist specified in [CHANGELIST.editor](CHANGELIST.editor) to the changelist specified in [CHANGELIST.client](CHANGELIST.client)
 0. Browse to `Engine\Build\BatchFiles`
 0. Run the build automation tool with:  
-     - Windows (64-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win64 -version=3008041`
-     - Windows (32-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win32 -version=3008041`
+     - Windows (64-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win64 -version=3008042`
+     - Windows (32-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win32 -version=3008042`
      - Linux: `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Linux -version=3008041`
-     - Mac: `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Mac -version=3008041`
+     - Mac: `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Mac -version=3008042`
 0. Wait until cooking process is done (could take a while)
 0. After cooking is done, the cooked and staged content package of this plugin can be found under:
    - Windows: `UnrealTournament\Saved\StagedBuilds\UTWeaponLockerPlugin\WindowsNoEditor\UnrealTournament\Content\Paks`

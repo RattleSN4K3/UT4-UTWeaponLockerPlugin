@@ -1,3 +1,23 @@
+Version 1.0
+--------------------------------------
+- Added: Example map with Lockers (incl. scripting)
+- Fixed: Spawn protection not remove when picking up weapons from locker
+- Fixed: Error message for invalid states always shown
+- Fixed: Crash when removing weapons from a 6+ weapon locker
+- Fixed: Duplicate weapon meshes after undo/redo
+- Changed: Proper positions and rotations for visible weapon meshes
+- Changed: Make use of Reset interface and properly reset on Level reset
+- Changed: AllowPickupBy now Blueprint-callable
+- Changed: Optimized replication of ReplacementWeapons array
+- Changed: Locker mesh scale increased
+- Added: Touch re-check for spawning lockers
+- Added: Mutator 'Start with Locker Weapons'
+- Added: Blueprint support for changing respawn time dynamically
+- Added: Implementable event when weapons are drawn/hidden
+- Added: Level script event (delegate) for pickup status
+- Added: Implementable editor event when weapons meshes are created
+- Added: Dynamically check if best lockers are really the best
+
 Pre Release 2
 --------------------------------------
 - New: Locker ammo per weapon
