@@ -82,10 +82,10 @@ If you are using the specific changelist, as specified in the [CHANGELIST.editor
 0. \[SKIP IF CHANGELISTS [[1](CHANGELIST.editor)][[2](CHANGELIST.client)] ARE THE SAME\]. Hex-modify the specific binary file with the changelist specified in [CHANGELIST.editor](CHANGELIST.editor) to the changelist specified in [CHANGELIST.client](CHANGELIST.client)
 0. Browse to `Engine\Build\BatchFiles`
 0. Run the build automation tool with:  
-     - Windows (64-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win64 -version=3008042`
-     - Windows (32-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win32 -version=3008042`
-     - Linux: `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Linux -version=3008041`
-     - Mac: `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Mac -version=3008042`
+     - Windows (64-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win64 -version=3008043`
+     - Windows (32-bit): `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Win32 -version=3008043`
+     - Linux: `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Linux -version=3008043`
+     - Mac: `RunUAT.bat MakeUTDLC -DLCName=UTWeaponLockerPlugin -platform=Mac -version=3008043`
 0. Wait until cooking process is done (could take a while)
 0. After cooking is done, the cooked and staged content package of this plugin can be found under:
    - Windows: `UnrealTournament\Saved\StagedBuilds\UTWeaponLockerPlugin\WindowsNoEditor\UnrealTournament\Content\Paks`
