@@ -7,7 +7,7 @@
  Game: Unreal Tournament (UE4)
  Size: ~ 37.8 MB
  Version: 1.0
- Compatibility: Build 2899548 (3/9/2016)
+ Compatibility: Build 2926870 (3/31/2016)
  Type: C++
  Credits: Epic Games
 -----------------------------------------------------------------------------
